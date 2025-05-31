@@ -350,6 +350,52 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// 사용 가능한 지역 목록 조회
+router.get('/regions', async (req, res) => {
+  try {
+    const records = await TaxiItem.find({ is_active: true })
+      .select('region departure_kor departure_is_airport arrival_kor arrival_is_airport')
+      .lean();
+
+    const map = new Map();
+
+    for (const r of records) {
+      if (!map.has(r.region)) {
+        map.set(r.region, { _id: r.region, airports: new Set(), places: new Set() });
+      }
+
+      const group = map.get(r.region);
+
+      if (r.departure_is_airport === 'Y') {
+        group.airports.add(r.departure_kor);
+      } else {
+        group.places.add(r.departure_kor);
+      }
+
+      if (r.arrival_is_airport === 'Y') {
+        group.airports.add(r.arrival_kor);
+      } else {
+        group.places.add(r.arrival_kor);
+      }
+    }
+
+    const regions = Array.from(map.values()).map(g => ({
+      _id: g._id,
+      airports: Array.from(g.airports),
+      places: Array.from(g.places)
+    })).sort((a, b) => a._id.localeCompare(b._id));
+
+    res.json({ success: true, data: regions });
+  } catch (error) {
+    console.error('지역 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '지역 목록 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // 단일 노선 조회
 router.get('/:id', async (req, res) => {
   try {
