@@ -82,7 +82,6 @@ const taxiSchema = new mongoose.Schema({
 // 지리공간 인덱스
 taxiSchema.index({ currentLocation: '2dsphere' });
 taxiSchema.index({ status: 1 });
-taxiSchema.index({ taxiNumber: 1 });
 
 // 가상 필드
 taxiSchema.virtual('bookings', {
