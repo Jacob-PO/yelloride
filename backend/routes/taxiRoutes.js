@@ -28,14 +28,23 @@ const upload = multer({
 });
 
 // 엑셀 파일 업로드 및 데이터 임포트
-router.post('/upload', upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
+router.post('/upload', (req, res) => {
+  upload.single('file')(req, res, async err => {
+    if (err) {
+      const status = err instanceof multer.MulterError ? 400 : 500;
+      return res.status(status).json({
         success: false,
-        message: '엑셀 파일이 필요합니다.'
+        message: err.message
       });
     }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: '엑셀 파일이 필요합니다.'
+        });
+      }
 
     const xlsx = require('xlsx');
     const workbook = xlsx.readFile(req.file.path);
@@ -82,6 +91,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       error: error.message
     });
   }
+  });
 });
 
 // 택시 노선 목록 조회
