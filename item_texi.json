@@ -26,6 +26,4 @@
   { region: 'NJ', departure_kor: 'NJ 뉴와크 공항 - EWR Airport', departure_eng: 'EWR airport NJ', departure_is_airport: 'Y', arrival_kor: 'NY 존에프케네디 공항 - JFK airport NY', arrival_eng: 'JFK airport NY', reservation_fee: 20, local_payment_fee: 150, arrival_is_airport: 'Y', priority: 4 },
   { region: 'NJ', departure_kor: 'NJ 뉴와크 공항 - EWR Airport', departure_eng: 'EWR airport NJ', departure_is_airport: 'Y', arrival_kor: 'NY 라과디아 공항 - LGA Airport', arrival_eng: 'LGA Airport NY', reservation_fee: 20, local_payment_fee: 130, arrival_is_airport: 'Y', priority: 5 },
   { region: 'NJ', departure_kor: 'NJ 뉴와크 공항 - EWR Airport', departure_eng: 'EWR airport NJ', departure_is_airport: 'Y', arrival_kor: 'NY 플러싱 - Flushing', arrival_eng: 'Flushing NY', reservation_fee: 20, local_payment_fee: 135, arrival_is_airport: 'N', priority: 7 },
-
-  // 여기에 더 많은 데이터를 추가할 수 있습니다...
-];
+]
