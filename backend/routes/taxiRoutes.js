@@ -169,6 +169,21 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 전체 노선 목록 조회 (인증 없이 사용)
+router.get('/all', async (req, res) => {
+  try {
+    const items = await TaxiItem.find({}).sort({ priority: 1 });
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('전체 노선 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '전체 노선 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // 특정 노선 검색
 router.get('/route', async (req, res) => {
   try {
