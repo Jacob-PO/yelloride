@@ -1,13 +1,6 @@
 {
   "short_name": "YelloRide",
   "name": "YelloRide Taxi Booking",
-  "icons": [
-    {
-      "src": "icon-192x192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    }
-  ],
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#ffffff",
