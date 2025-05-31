@@ -2152,7 +2152,7 @@ const BookingPage = () => {
     return total;
   };
 
-  const validateStep = (step) => {
+  const computeStepErrors = (step) => {
     const newErrors = {};
     
     switch (step) {
@@ -2204,9 +2204,18 @@ const BookingPage = () => {
         return false;
     }
     
+    return newErrors;
+  };
+
+  const validateStep = (step) => {
+    const newErrors = computeStepErrors(step);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const isStepValid = React.useMemo(() => {
+    return Object.keys(computeStepErrors(currentStep)).length === 0;
+  }, [currentStep, bookingData]);
 
   const updateBookingData = (field, value) => {
     setBookingData(prev => ({
@@ -2612,7 +2621,7 @@ const BookingPage = () => {
           <Button
             className={currentStep === 1 ? "w-full" : "flex-1"}
             onClick={nextStep}
-            disabled={loading || !validateStep(currentStep)}
+            disabled={loading || !isStepValid}
           >
             {loading ? (
               <div className="flex items-center gap-2">
