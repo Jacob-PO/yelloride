@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seedData.js",
     "seed:taxi": "node scripts/seedTaxiData.js",
-    "import:taxi": "node scripts/importTaxiData.js"
+    "import:taxi": "node scripts/importTaxiData.js",
+    "import:json": "node scripts/importTaxiJson.js"
   },
   "keywords": [
     "taxi",

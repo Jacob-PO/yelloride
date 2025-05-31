@@ -57,6 +57,7 @@ app.use('/api/taxis', require('./routes/taxis'));
 app.use('/api/taxi', require('./routes/taxiRoutes'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/routes', require('./routes/routes'));
+app.use('/api/products', require('./routes/products'));
 
 // 헬스 체크 엔드포인트
 app.get('/health', (req, res) => {

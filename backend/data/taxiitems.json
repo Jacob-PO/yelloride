@@ -1,0 +1,5 @@
+[
+  {"region":"NY","departure_kor":"NY 자메이카","departure_eng":"NY Jamaica","departure_is_airport":"N","arrival_kor":"NY 존에프케네디 공항 - JFK airport","arrival_eng":"JFK airport NY","reservation_fee":20,"local_payment_fee":35,"arrival_is_airport":"Y","priority":1},
+  {"region":"NY","departure_kor":"NY 존에프케네디 공항 - JFK airport","departure_eng":"JFK airport NY","departure_is_airport":"Y","arrival_kor":"NY 맨하탄 미드타운 - Manhattan Midtown","arrival_eng":"Manhattan Midtown NY","reservation_fee":20,"local_payment_fee":75,"arrival_is_airport":"N","priority":1},
+  {"region":"NY","departure_kor":"NY 존에프케네디 공항 - JFK airport","departure_eng":"JFK airport NY","departure_is_airport":"Y","arrival_kor":"NY 브루클린 - Brooklyn","arrival_eng":"Brooklyn NY","reservation_fee":20,"local_payment_fee":55,"arrival_is_airport":"N","priority":3}
+]
