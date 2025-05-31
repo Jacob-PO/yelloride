@@ -1179,6 +1179,12 @@ const YellorideApp = () => {
           airports: [],
           places: []
         },
+        LA: {
+          name: '로스앤젤레스',
+          desc: 'LA 지역, LAX 공항',
+          airports: [],
+          places: []
+        },
         CA: {
           name: '캘리포니아',
           desc: 'LA, 샌프란시스코, LAX/SFO 공항',
@@ -1195,6 +1201,7 @@ const YellorideApp = () => {
   const getRegionName = (code) => {
     const regionNames = {
       'NY': '뉴욕',
+      'LA': '로스앤젤레스',
       'CA': '캘리포니아',
       'NJ': '뉴저지',
       'TX': '텍사스',
@@ -1210,6 +1217,7 @@ const YellorideApp = () => {
   const getRegionDescription = (code) => {
     const descriptions = {
       'NY': '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
+      'LA': 'LA 지역, LAX 공항',
       'CA': 'LA, 샌프란시스코, LAX/SFO 공항',
       'NJ': '뉴어크, 저지시티, EWR 공항',
       'TX': '휴스턴, 댈러스, IAH/DFW 공항',
