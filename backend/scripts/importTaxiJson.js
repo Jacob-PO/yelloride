@@ -31,7 +31,11 @@ async function importFromJson(filePath, { clear = false } = {}) {
 }
 
 const args = process.argv.slice(2);
-const jsonPath = args[0] || path.resolve(__dirname, '../data/taxiitems_full.json');
+if (!args[0]) {
+  console.error('JSON 파일 경로를 지정해야 합니다.');
+  process.exit(1);
+}
+const jsonPath = path.resolve(args[0]);
 const clear = args.includes('--clear');
 
 importFromJson(jsonPath, { clear });

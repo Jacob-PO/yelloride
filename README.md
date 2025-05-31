@@ -129,10 +129,10 @@ npm start
 cd backend
 npm run seed        # 전체 샘플 데이터 생성
 npm run seed:taxi   # 택시 데이터만 생성
-npm run import:json -- --clear   # JSON 파일로 모든 택시 노선 갱신
+npm run import:json -- ./your_data.json --clear   # JSON 파일로 모든 택시 노선 갱신
 ```
 
-초기 택시 노선 데이터는 MongoDB에 직접 임포트해야 합니다. 필요 시 `npm run import:json -- --clear` 명령을 사용해 `backend/data/taxiitems_full.json` 파일의 내용을 컬렉션에 삽입할 수 있습니다.
+초기 택시 노선 데이터는 MongoDB에 직접 임포트해야 합니다. JSON 파일이 있을 경우 `npm run import:json -- <파일경로> [--clear]` 명령으로 컬렉션을 갱신할 수 있습니다.
 
 ### 프로덕션 빌드
 ```bash
