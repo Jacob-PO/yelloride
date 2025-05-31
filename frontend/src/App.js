@@ -1,10 +1,110 @@
-import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Calendar, Phone, MapPin, Clock, Users, Luggage, Car, CreditCard, CheckCircle, ArrowLeft, Search, Plus, Minus, X } from 'lucide-react';
 
 // 전역 상태 관리
 const AppContext = createContext();
 
-// API 서비스 클래스 (하나로 통합)
+// API 서비스 클래스
+class YellorideAPI {
+  constructor() {
+    this.baseURL = 'http://localhost:5001/api';
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    };
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || '서버 오류가 발생했습니다.');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('API 요청 오류:', error);
+      throw error;
+    }
+  }
+
+  // 택시 노선 관련 API
+  async getTaxiItems(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/taxi?${queryString}`);
+  }
+
+  async searchRoute(departure, arrival, lang = 'kor') {
+    const params = new URLSearchParams({ departure, arrival, lang });
+    return this.request(`/taxi/route?${params}`);
+  }
+
+  async getStats() {
+    return this.request('/taxi/stats');
+  }
+
+  // 예약 관련 API
+  async createBooking(bookingData) {
+    return this.request('/bookings', {
+      method: 'POST',
+      body: JSON.stringify(bookingData)
+    });
+  }
+
+  async getBookingByNumber(bookingNumber) {
+    return this.request(`/bookings/number/${bookingNumber}`);
+  }
+}
+
+// 접근성 및 SEO 개선 훅
+const useAccessibility = () => {
+  useEffect(() => {
+    // 포커스 관리
+    const handleKeyDown = (e) => {
+      if (e.key === 'Tab') {
+        document.body.classList.add('using-keyboard');
+      }
+    };
+
+    const handleMouseDown = () => {
+      document.body.classList.remove('using-keyboard');
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, []);
+};
+
+// 개선된 로딩 상태 관리 훅
+const useLoadingState = () => {
+  const [loadingStates, setLoadingStates] = useState({});
+
+  const setLoading = (key, isLoading) => {
+    setLoadingStates(prev => ({
+      ...prev,
+      [key]: isLoading
+    }));
+  };
+
+  const isLoading = (key) => loadingStates[key] || false;
+  const isAnyLoading = () => Object.values(loadingStates).some(Boolean);
+
+  return { setLoading, isLoading, isAnyLoading };
+};
+
+// 개선된 API 서비스 클래스 (최종 버전)
 class YellorideAPI {
   constructor() {
     this.baseURL = process.env.NODE_ENV === 'production' 
@@ -167,85 +267,6 @@ class YellorideAPI {
     });
   }
 }
-
-// 지역별 공항/장소 데이터는 상수로 분리해 렌더 간 재생성을 방지
-const REGION_DATA = {
-  NY: {
-    name: '뉴욕',
-    desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
-    airports: [
-      { name_kor: 'NY 존에프케네디 공항', name_eng: 'JFK Airport', is_airport: true },
-      { name_kor: 'NY 라과디아 공항', name_eng: 'LGA Airport', is_airport: true },
-      { name_kor: 'NJ 뉴와크 공항', name_eng: 'EWR Airport', is_airport: true }
-    ],
-    places: [
-      { name_kor: 'NY 맨해튼 미드타운', name_eng: 'Manhattan Midtown' },
-      { name_kor: 'NY 맨해튼 다운타운', name_eng: 'Manhattan Downtown' },
-      { name_kor: 'NY 브루클린', name_eng: 'Brooklyn' },
-      { name_kor: 'NY 플러싱', name_eng: 'Flushing' },
-      { name_kor: 'NY 자메이카', name_eng: 'Jamaica' }
-    ]
-  },
-  CA: {
-    name: '캘리포니아',
-    desc: 'LA, 샌프란시스코, LAX/SFO 공항',
-    airports: [
-      { name_kor: 'LAX 국제공항', name_eng: 'LAX Airport', is_airport: true },
-      { name_kor: 'SFO 국제공항', name_eng: 'SFO Airport', is_airport: true },
-      { name_kor: '버뱅크 공항', name_eng: 'Burbank Airport', is_airport: true }
-    ],
-    places: [
-      { name_kor: 'LA 다운타운', name_eng: 'Downtown LA' },
-      { name_kor: 'LA 할리우드', name_eng: 'Hollywood' },
-      { name_kor: 'LA 베벌리힐스', name_eng: 'Beverly Hills' },
-      { name_kor: 'SF 유니언 스퀘어', name_eng: 'Union Square' },
-      { name_kor: 'SF 피셔맨스 워프', name_eng: "Fisherman's Wharf" }
-    ]
-  }
-};
-
-// 접근성 및 SEO 개선 훅
-const useAccessibility = () => {
-  useEffect(() => {
-    // 포커스 관리
-    const handleKeyDown = (e) => {
-      if (e.key === 'Tab') {
-        document.body.classList.add('using-keyboard');
-      }
-    };
-
-    const handleMouseDown = () => {
-      document.body.classList.remove('using-keyboard');
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleMouseDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, []);
-};
-
-// 개선된 로딩 상태 관리 훅
-const useLoadingState = () => {
-  const [loadingStates, setLoadingStates] = useState({});
-
-  const setLoading = (key, isLoading) => {
-    setLoadingStates(prev => ({
-      ...prev,
-      [key]: isLoading
-    }));
-  };
-
-  const isLoading = (key) => loadingStates[key] || false;
-  const isAnyLoading = () => Object.values(loadingStates).some(Boolean);
-
-  return { setLoading, isLoading, isAnyLoading };
-};
-
-// Toast 컴포넌트
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -322,7 +343,399 @@ const useOnlineStatus = () => {
   return isOnline;
 };
 
-// UI 컴포넌트들
+// 개선된 API 서비스 클래스
+class YellorideAPI {
+  constructor() {
+    this.baseURL = 'http://localhost:5001/api';
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    };
+
+    try {
+      const response = await fetch(url, config);
+      
+      // 네트워크 오류 체크
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      // 네트워크 연결 오류
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.');
+      }
+      
+      console.error('API 요청 오류:', error);
+      throw error;
+    }
+  }
+
+  // 택시 노선 관련 API
+  async getTaxiItems(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/taxi?${queryString}`);
+  }
+
+  async searchRoute(departure, arrival, lang = 'kor') {
+    const params = new URLSearchParams({ departure, arrival, lang });
+    return this.request(`/taxi/route?${params}`);
+  }
+
+  async getStats() {
+    return this.request('/taxi/stats');
+  }
+
+  // 예약 관련 API
+  async createBooking(bookingData) {
+    return this.request('/bookings', {
+      method: 'POST',
+      body: JSON.stringify(bookingData)
+    });
+  }
+
+  async getBookingByNumber(bookingNumber) {
+    return this.request(`/bookings/number/${bookingNumber}`);
+  }
+
+  // 헬스 체크
+  async healthCheck() {
+    try {
+      const response = await fetch(`${this.baseURL}/health`);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+// 피드백 시스템 컴포넌트
+const FeedbackModal = ({ isOpen, onClose }) => {
+  const { api, showToast } = useContext(AppContext);
+  const [feedback, setFeedback] = useState({
+    type: 'general',
+    rating: 5,
+    message: '',
+    contact: ''
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!feedback.message.trim()) {
+      showToast('피드백 내용을 입력해주세요.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.sendFeedback({
+        ...feedback,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.pathname
+      });
+      
+      showToast('소중한 의견 감사합니다! 검토 후 반영하겠습니다.', 'success');
+      onClose();
+      setFeedback({ type: 'general', rating: 5, message: '', contact: '' });
+    } catch (error) {
+      showToast('피드백 전송 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-semibold">피드백 보내기</h3>
+            <Button variant="secondary" size="sm" className="p-2" onClick={onClose}>
+              ✕
+            </Button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                피드백 유형
+              </label>
+              <select
+                value={feedback.type}
+                onChange={(e) => setFeedback(prev => ({ ...prev, type: e.target.value }))}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              >
+                <option value="general">일반 의견</option>
+                <option value="bug">버그 신고</option>
+                <option value="feature">기능 요청</option>
+                <option value="ui">UI/UX 개선</option>
+                <option value="performance">성능 문제</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                만족도 (1-5점)
+              </label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <button
+                    key={rating}
+                    type="button"
+                    onClick={() => setFeedback(prev => ({ ...prev, rating }))}
+                    className={`w-10 h-10 rounded-full border transition-colors ${
+                      feedback.rating >= rating 
+                        ? 'bg-yellow-400 border-yellow-400 text-white' 
+                        : 'border-gray-300 hover:border-yellow-400'
+                    }`}
+                  >
+                    ⭐
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                상세 내용 *
+              </label>
+              <textarea
+                value={feedback.message}
+                onChange={(e) => setFeedback(prev => ({ ...prev, message: e.target.value }))}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                rows="4"
+                placeholder="개선사항, 문제점, 또는 의견을 자세히 알려주세요..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                연락처 (선택사항)
+              </label>
+              <Input
+                type="email"
+                value={feedback.contact}
+                onChange={(e) => setFeedback(prev => ({ ...prev, contact: e.target.value }))}
+                placeholder="답변이 필요한 경우 이메일을 입력해주세요"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" className="flex-1" onClick={onClose}>
+                취소
+              </Button>
+              <Button type="submit" className="flex-1" loading={loading}>
+                전송
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 다국어 지원 기본 구조
+const useTranslation = () => {
+  const [locale, setLocale] = useState(() => {
+    return localStorage.getItem('locale') || 'ko';
+  });
+
+  const translations = {
+    ko: {
+      // 공통
+      'common.loading': '로딩 중...',
+      'common.error': '오류가 발생했습니다',
+      'common.retry': '다시 시도',
+      'common.cancel': '취소',
+      'common.confirm': '확인',
+      'common.next': '다음',
+      'common.previous': '이전',
+      'common.save': '저장',
+      'common.delete': '삭제',
+      
+      // 홈페이지
+      'home.title': '어디로 모실까요?',
+      'home.departure': '출발지',
+      'home.arrival': '도착지',
+      'home.departure_placeholder': '어디서 출발하시나요?',
+      'home.arrival_placeholder': '어디로 가시나요?',
+      'home.popular_routes': '인기 노선',
+      'home.book_now': '예약하기',
+      
+      // 예약 페이지
+      'booking.title': '예약하기',
+      'booking.step': '단계',
+      'booking.date_time': '언제 이용하시나요?',
+      'booking.passengers': '인원과 짐을 알려주세요',
+      'booking.contact': '연락처 정보를 입력해주세요',
+      'booking.confirm': '예약 내용을 확인해주세요',
+      'booking.complete': '예약 완료',
+      
+      // 에러 메시지
+      'error.network': '네트워크 연결을 확인해주세요',
+      'error.server': '서버 오류가 발생했습니다',
+      'error.validation': '입력 정보를 확인해주세요'
+    },
+    en: {
+      // 공통
+      'common.loading': 'Loading...',
+      'common.error': 'An error occurred',
+      'common.retry': 'Retry',
+      'common.cancel': 'Cancel',
+      'common.confirm': 'Confirm',
+      'common.next': 'Next',
+      'common.previous': 'Previous',
+      'common.save': 'Save',
+      'common.delete': 'Delete',
+      
+      // 홈페이지
+      'home.title': 'Where would you like to go?',
+      'home.departure': 'From',
+      'home.arrival': 'To',
+      'home.departure_placeholder': 'Where are you departing from?',
+      'home.arrival_placeholder': 'Where are you going?',
+      'home.popular_routes': 'Popular Routes',
+      'home.book_now': 'Book Now',
+      
+      // 예약 페이지
+      'booking.title': 'Book a Ride',
+      'booking.step': 'Step',
+      'booking.date_time': 'When do you need a ride?',
+      'booking.passengers': 'Tell us about passengers and luggage',
+      'booking.contact': 'Enter your contact information',
+      'booking.confirm': 'Confirm your booking details',
+      'booking.complete': 'Booking Complete',
+      
+      // 에러 메시지
+      'error.network': 'Please check your network connection',
+      'error.server': 'Server error occurred',
+      'error.validation': 'Please check your input'
+    }
+  };
+
+  const t = (key, fallback = key) => {
+    return translations[locale]?.[key] || fallback;
+  };
+
+  const changeLocale = (newLocale) => {
+    setLocale(newLocale);
+    localStorage.setItem('locale', newLocale);
+  };
+
+  return { t, locale, changeLocale };
+};
+
+// 성능 최적화 훅
+const useVirtualization = (items, itemHeight = 60, containerHeight = 400) => {
+  const [scrollTop, setScrollTop] = useState(0);
+  
+  const visibleStart = Math.floor(scrollTop / itemHeight);
+  const visibleEnd = Math.min(visibleStart + Math.ceil(containerHeight / itemHeight) + 1, items.length);
+  
+  const visibleItems = items.slice(visibleStart, visibleEnd).map((item, index) => ({
+    ...item,
+    index: visibleStart + index
+  }));
+  
+  const totalHeight = items.length * itemHeight;
+  const offsetY = visibleStart * itemHeight;
+  
+  return {
+    visibleItems,
+    totalHeight,
+    offsetY,
+    onScroll: (e) => setScrollTop(e.target.scrollTop)
+  };
+};
+
+// 개선된 에러 바운더리
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+    
+    // 에러 로깅 (실제 프로덕션에서는 에러 추적 서비스로 전송)
+    console.error('Error Boundary caught an error:', error, errorInfo);
+    
+    // 선택적으로 에러 추적 서비스에 전송
+    if (window.gtag) {
+      window.gtag('event', 'exception', {
+        description: error.toString(),
+        fatal: false
+      });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6 text-center">
+            <div className="text-4xl mb-4">😵</div>
+            <h2 className="text-xl font-semibold mb-2">앗! 문제가 발생했습니다</h2>
+            <p className="text-gray-600 mb-4">
+              예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
+            </p>
+            
+            {process.env.NODE_ENV === 'development' && (
+              <details className="text-left mb-4 p-3 bg-gray-100 rounded text-sm">
+                <summary className="cursor-pointer font-semibold">개발자 정보</summary>
+                <pre className="mt-2 overflow-auto">
+                  {this.state.error && this.state.error.toString()}
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </details>
+            )}
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
+                className="flex-1"
+              >
+                다시 시도
+              </Button>
+              <Button 
+                onClick={() => window.location.reload()}
+                className="flex-1"
+              >
+                새로고침
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 const Button = ({ children, variant = 'primary', size = 'md', disabled = false, loading = false, onClick, className = '', ...props }) => {
   const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed';
   
@@ -457,9 +870,9 @@ const EmptyState = ({ title, message, action, icon = '📭' }) => {
 
 // 연결 상태 표시 컴포넌트
 const ConnectionStatus = () => {
-  const { api } = useContext(AppContext);
   const isOnline = useOnlineStatus();
   const [serverStatus, setServerStatus] = useState(true);
+  const api = new YellorideAPI();
 
   useEffect(() => {
     const checkServerStatus = async () => {
@@ -492,204 +905,610 @@ const ConnectionStatus = () => {
   return null;
 };
 
-// 에러 바운더리
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
+// 관리자 페이지
+const AdminPage = () => {
+  const { setCurrentPage, api, showToast } = useContext(AppContext);
+  const [activeTab, setActiveTab] = useState('upload');
+  const [taxiData, setTaxiData] = useState([]);
+  const [stats, setStats] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [clearExisting, setClearExisting] = useState(false);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [filters, setFilters] = useState({
+    region: '',
+    search: '',
+    departure_is_airport: '',
+    arrival_is_airport: ''
+  });
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    this.setState({
-      error: error,
-      errorInfo: errorInfo
-    });
-    
-    console.error('Error Boundary caught an error:', error, errorInfo);
-    
-    if (window.gtag) {
-      window.gtag('event', 'exception', {
-        description: error.toString(),
-        fatal: false
-      });
+  const handleFileUpload = async () => {
+    if (!uploadFile) {
+      showToast('파일을 선택해주세요.', 'error');
+      return;
     }
-  }
 
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6 text-center">
-            <div className="text-4xl mb-4">😵</div>
-            <h2 className="text-xl font-semibold mb-2">앗! 문제가 발생했습니다</h2>
-            <p className="text-gray-600 mb-4">
-              예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
-            </p>
-            
-            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
-              <details className="text-left mb-4 p-3 bg-gray-100 rounded text-sm">
-                <summary className="cursor-pointer font-semibold">개발자 정보</summary>
-                <pre className="mt-2 overflow-auto">
-                  {this.state.error && this.state.error.toString()}
-                  {this.state.errorInfo.componentStack}
-                </pre>
-              </details>
-            )}
-            
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
-                className="flex-1"
-              >
-                다시 시도
+    const formData = new FormData();
+    formData.append('file', uploadFile);
+    formData.append('clearExisting', clearExisting);
+
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5001/api/taxi/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast(data.message, 'success');
+        setUploadFile(null);
+        setClearExisting(false);
+        
+        // 업로드 후 데이터 탭이 활성화되어 있으면 새로고침
+        if (activeTab === 'data') {
+          loadTaxiData();
+        }
+        
+        // 통계도 새로고침
+        if (activeTab === 'stats') {
+          loadStats();
+        }
+      } else {
+        showToast(data.message || '업로드 실패', 'error');
+      }
+    } catch (error) {
+      showToast('서버 연결 실패: ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTaxiData = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        ...filters
+      };
+      
+      // 빈 필터 제거
+      Object.keys(params).forEach(key => {
+        if (params[key] === '') {
+          delete params[key];
+        }
+      });
+
+      const response = await api.getTaxiItems(params);
+      
+      if (response.success) {
+        setTaxiData(response.data);
+        setPagination(prev => ({ 
+          ...prev, 
+          total: response.pagination?.total || 0,
+          pages: response.pagination?.pages || 1
+        }));
+        
+        if (response.data.length === 0) {
+          showToast('검색된 데이터가 없습니다.', 'info');
+        }
+      } else {
+        throw new Error(response.message || '데이터 로드 실패');
+      }
+    } catch (error) {
+      showToast(error.message || '데이터를 불러오는데 실패했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      const response = await api.getStats();
+      if (response.success) {
+        setStats(response.data);
+        if (response.data.length === 0) {
+          showToast('통계 데이터가 없습니다. 먼저 택시 데이터를 업로드해주세요.', 'info');
+        }
+      } else {
+        throw new Error(response.message || '통계 로드 실패');
+      }
+    } catch (error) {
+      showToast(error.message || '통계를 불러오는데 실패했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAllData = async () => {
+    if (!window.confirm('정말로 모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+      return;
+    }
+
+    const confirmText = prompt('전체 데이터를 삭제하려면 "DELETE_ALL"을 입력하세요:');
+    if (confirmText !== 'DELETE_ALL') {
+      showToast('삭제가 취소되었습니다.', 'info');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5001/api/taxi/all', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ confirm: 'DELETE_ALL' })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast(data.message, 'success');
+        setTaxiData([]);
+        setStats([]);
+        setPagination(prev => ({ ...prev, total: 0, pages: 1 }));
+      } else {
+        showToast(data.message || '삭제 실패', 'error');
+      }
+    } catch (error) {
+      showToast('서버 연결 실패', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPagination(prev => ({ ...prev, page: 1 })); // 필터 변경 시 첫 페이지로
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      region: '',
+      search: '',
+      departure_is_airport: '',
+      arrival_is_airport: ''
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'data') {
+      loadTaxiData();
+    } else if (activeTab === 'stats') {
+      loadStats();
+    }
+  }, [activeTab, pagination.page, filters]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    
+    // 탭 변경 시 필터와 페이지네이션 초기화
+    if (tabId === 'data') {
+      resetFilters();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
+                <ArrowLeft className="w-4 h-4" />
               </Button>
-              <Button 
-                onClick={() => window.location.reload()}
-                className="flex-1"
-              >
-                새로고침
-              </Button>
+              <h1 className="text-xl font-bold">택시 데이터 관리</h1>
+            </div>
+            <div className="text-sm text-gray-600">
+              관리자 모드
             </div>
           </div>
         </div>
-      );
-    }
+      </header>
 
-    return this.props.children;
-  }
-}
+      {/* 탭 네비게이션 */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex space-x-8">
+            {[
+              { id: 'upload', label: '파일 업로드', icon: '📤' },
+              { id: 'data', label: '데이터 조회', icon: '📊' },
+              { id: 'stats', label: '통계', icon: '📈' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => handleTabChange(tab.id)}
+              >
+                <span className="mr-2">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-// 다국어 지원 기본 구조
-const useTranslation = () => {
-  const [locale, setLocale] = useState(() => {
-    return localStorage.getItem('locale') || 'ko';
-  });
+      <div className="max-w-6xl mx-auto p-6">
+        {/* 데이터 조회 탭 */}
+        {activeTab === 'data' && (
+          <div className="space-y-6">
+            {/* 필터 섹션 */}
+            <Card className="p-6">
+              <h4 className="font-semibold mb-4">필터 및 검색</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
+                  <select
+                    value={filters.region}
+                    onChange={(e) => handleFilterChange('region', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">전체 지역</option>
+                    <option value="NY">뉴욕</option>
+                    <option value="CA">캘리포니아</option>
+                    <option value="NJ">뉴저지</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">출발지 공항</label>
+                  <select
+                    value={filters.departure_is_airport}
+                    onChange={(e) => handleFilterChange('departure_is_airport', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">전체</option>
+                    <option value="Y">공항</option>
+                    <option value="N">일반 지역</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">도착지 공항</label>
+                  <select
+                    value={filters.arrival_is_airport}
+                    onChange={(e) => handleFilterChange('arrival_is_airport', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">전체</option>
+                    <option value="Y">공항</option>
+                    <option value="N">일반 지역</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">검색</label>
+                  <input
+                    type="text"
+                    placeholder="출발지 또는 도착지 검색"
+                    value={filters.search}
+                    onChange={(e) => handleFilterChange('search', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button onClick={loadTaxiData} variant="primary" size="sm" loading={loading}>
+                  검색
+                </Button>
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  필터 초기화
+                </Button>
+              </div>
+            </Card>
 
-  const translations = {
-    ko: {
-      'common.loading': '로딩 중...',
-      'common.error': '오류가 발생했습니다',
-      'common.retry': '다시 시도',
-      'common.cancel': '취소',
-      'common.confirm': '확인',
-      'common.next': '다음',
-      'common.previous': '이전',
-      'common.save': '저장',
-      'common.delete': '삭제',
-      
-      'home.title': '어디로 모실까요?',
-      'home.departure': '출발지',
-      'home.arrival': '도착지',
-      'home.departure_placeholder': '어디서 출발하시나요?',
-      'home.arrival_placeholder': '어디로 가시나요?',
-      'home.popular_routes': '인기 노선',
-      'home.book_now': '예약하기',
-      
-      'booking.title': '예약하기',
-      'booking.step': '단계',
-      'booking.date_time': '언제 이용하시나요?',
-      'booking.passengers': '인원과 짐을 알려주세요',
-      'booking.contact': '연락처 정보를 입력해주세요',
-      'booking.confirm': '예약 내용을 확인해주세요',
-      'booking.complete': '예약 완료',
-      
-      'error.network': '네트워크 연결을 확인해주세요',
-      'error.server': '서버 오류가 발생했습니다',
-      'error.validation': '입력 정보를 확인해주세요'
-    },
-    en: {
-      'common.loading': 'Loading...',
-      'common.error': 'An error occurred',
-      'common.retry': 'Retry',
-      'common.cancel': 'Cancel',
-      'common.confirm': 'Confirm',
-      'common.next': 'Next',
-      'common.previous': 'Previous',
-      'common.save': 'Save',
-      'common.delete': 'Delete',
-      
-      'home.title': 'Where would you like to go?',
-      'home.departure': 'From',
-      'home.arrival': 'To',
-      'home.departure_placeholder': 'Where are you departing from?',
-      'home.arrival_placeholder': 'Where are you going?',
-      'home.popular_routes': 'Popular Routes',
-      'home.book_now': 'Book Now',
-      
-      'booking.title': 'Book a Ride',
-      'booking.step': 'Step',
-      'booking.date_time': 'When do you need a ride?',
-      'booking.passengers': 'Tell us about passengers and luggage',
-      'booking.contact': 'Enter your contact information',
-      'booking.confirm': 'Confirm your booking details',
-      'booking.complete': 'Booking Complete',
-      
-      'error.network': 'Please check your network connection',
-      'error.server': 'Server error occurred',
-      'error.validation': 'Please check your input'
-    }
-  };
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">택시 노선 데이터</h3>
+                <div className="flex gap-2">
+                  <Button onClick={loadTaxiData} variant="outline" size="sm" loading={loading}>
+                    새로고침
+                  </Button>
+                  <Button onClick={deleteAllData} variant="danger" size="sm">
+                    전체 삭제
+                  </Button>
+                </div>
+              </div>
 
-  const t = (key, fallback = key) => {
-    return translations[locale]?.[key] || fallback;
-  };
+              {loading ? (
+                <Loading text="데이터를 불러오는 중..." />
+              ) : taxiData.length === 0 ? (
+                <EmptyState
+                  title="데이터가 없습니다"
+                  message="필터 조건을 변경하거나 새로운 데이터를 업로드해주세요."
+                  action={
+                    <Button onClick={() => setActiveTab('upload')} variant="primary">
+                      데이터 업로드
+                    </Button>
+                  }
+                />
+              ) : (
+                <div>
+                  <div className="mb-4 text-sm text-gray-600 flex justify-between items-center">
+                    <span>
+                      총 {pagination.total}개 중 {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)}개 표시
+                    </span>
+                    <span>
+                      페이지 {pagination.page} / {Math.ceil(pagination.total / pagination.limit)}
+                    </span>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">지역</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">출발지</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">도착지</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">예약료</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">현지료</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">총액</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">우선순위</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {taxiData.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {item.region}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex items-center">
+                                <span>{item.departure_kor}</span>
+                                {item.departure_is_airport === 'Y' && <span className="ml-1">✈️</span>}
+                              </div>
+                              <div className="text-xs text-gray-500">{item.departure_eng}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <div className="flex items-center">
+                                <span>{item.arrival_kor}</span>
+                                {item.arrival_is_airport === 'Y' && <span className="ml-1">✈️</span>}
+                              </div>
+                              <div className="text-xs text-gray-500">{item.arrival_eng}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium">${item.reservation_fee}</td>
+                            <td className="px-4 py-3 text-sm font-medium">${item.local_payment_fee}</td>
+                            <td className="px-4 py-3 text-sm font-bold text-yellow-600">
+                              ${item.reservation_fee + item.local_payment_fee}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{item.priority || 99}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-  const changeLocale = (newLocale) => {
-    setLocale(newLocale);
-    localStorage.setItem('locale', newLocale);
-  };
+                  {/* 페이지네이션 */}
+                  <div className="mt-4 flex justify-between items-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                      disabled={pagination.page === 1 || loading}
+                    >
+                      이전
+                    </Button>
+                    
+                    <div className="flex gap-2">
+                      {[...Array(Math.min(5, Math.ceil(pagination.total / pagination.limit)))].map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pagination.page === pageNum ? "primary" : "outline"}
+                            size="sm"
+                            onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(Math.ceil(pagination.total / pagination.limit), prev.page + 1) }))}
+                      disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit) || loading}
+                    >
+                      다음
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+        {/* 파일 업로드 탭 */}
+        {activeTab === 'upload' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">엑셀 파일 업로드</h3>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4 hover:border-blue-400 transition-colors">
+                <div className="text-4xl mb-4">📁</div>
+                <h4 className="text-lg font-medium mb-2">파일을 선택하세요</h4>
+                <p className="text-gray-600 mb-4">xlsx, xls 파일만 업로드 가능합니다 (최대 10MB)</p>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                  className="mb-4"
+                />
+                {uploadFile && (
+                  <p className="text-sm text-green-600">✓ 선택된 파일: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)}MB)</p>
+                )}
+              </div>
 
-  return { t, locale, changeLocale };
+              <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={clearExisting}
+                    onChange={(e) => setClearExisting(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">
+                    <strong>기존 데이터 모두 삭제하고 새로 업로드</strong>
+                    <br />
+                    <span className="text-gray-600">체크하면 기존의 모든 택시 노선 데이터가 삭제됩니다.</span>
+                  </span>
+                </label>
+              </div>
+
+              <Button 
+                onClick={handleFileUpload}
+                disabled={!uploadFile}
+                loading={loading}
+                className="w-full"
+              >
+                {loading ? '업로드 중...' : '업로드 시작'}
+              </Button>
+            </Card>
+
+            <Card className="p-6 bg-blue-50">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <span>📋</span>
+                엑셀 파일 형식 가이드
+              </h4>
+              <div className="text-sm space-y-3">
+                <div>
+                  <strong className="text-blue-800">필수 컬럼:</strong>
+                  <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                    <li>region (지역: NY, CA, NJ 등)</li>
+                    <li>departure_kor (출발지 한글명)</li>
+                    <li>departure_eng (출발지 영문명)</li>
+                    <li>departure_is_airport (출발지 공항 여부: Y 또는 N)</li>
+                    <li>arrival_kor (도착지 한글명)</li>
+                    <li>arrival_eng (도착지 영문명)</li>
+                    <li>arrival_is_airport (도착지 공항 여부: Y 또는 N)</li>
+                    <li>reservation_fee (예약료, 숫자)</li>
+                    <li>local_payment_fee (현지 지불료, 숫자)</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong className="text-blue-800">선택 컬럼:</strong>
+                  <ul className="list-disc list-inside ml-4 mt-1">
+                    <li>priority (우선순위, 숫자 - 기본값: 99)</li>
+                  </ul>
+                </div>
+                <div className="bg-white p-3 rounded border-l-4 border-blue-500">
+                  <strong>예시:</strong><br />
+                  region: NY, departure_kor: NY 맨해튼 미드타운, departure_eng: Manhattan Midtown, departure_is_airport: N, ...
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* 데이터 조회 탭은 이미 위에 있음 */}
+
+        {/* 통계 탭 */}
+        {activeTab === 'stats' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">지역별 통계</h3>
+                <Button onClick={loadStats} variant="outline" size="sm" loading={loading}>
+                  새로고침
+                </Button>
+              </div>
+
+              {loading ? (
+                <Loading text="통계를 불러오는 중..." />
+              ) : stats.length === 0 ? (
+                <EmptyState
+                  title="통계 데이터가 없습니다"
+                  message="먼저 택시 노선 데이터를 업로드해주세요."
+                  action={
+                    <Button onClick={() => setActiveTab('upload')} variant="primary">
+                      데이터 업로드하기
+                    </Button>
+                  }
+                  icon="📊"
+                />
+              ) : (
+                <div className="space-y-6">
+                  {/* 요약 카드 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6">
+                      <h4 className="text-lg font-semibold mb-2">총 노선 수</h4>
+                      <p className="text-3xl font-bold">{stats.reduce((sum, stat) => sum + stat.count, 0)}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-6">
+                      <h4 className="text-lg font-semibold mb-2">평균 총 요금</h4>
+                      <p className="text-3xl font-bold">
+                        ${Math.round(stats.reduce((sum, stat) => sum + (stat.avgReservationFee + stat.avgLocalPaymentFee), 0) / stats.length)}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-6">
+                      <h4 className="text-lg font-semibold mb-2">서비스 지역</h4>
+                      <p className="text-3xl font-bold">{stats.length}</p>
+                    </div>
+                  </div>
+
+                  {/* 지역별 상세 통계 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {stats.map((stat, index) => (
+                      <Card key={index} className="p-6 bg-gradient-to-br from-blue-50 to-blue-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-lg font-bold text-blue-900">{stat._id}</h4>
+                          <span className="text-2xl font-bold text-blue-600">{stat.count}</span>
+                        </div>
+                        
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">평균 예약료:</span>
+                            <span className="font-semibold">${Math.round(stat.avgReservationFee)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">평균 현지료:</span>
+                            <span className="font-semibold">${Math.round(stat.avgLocalPaymentFee)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">평균 총액:</span>
+                            <span className="font-semibold text-blue-800">${Math.round(stat.avgReservationFee + stat.avgLocalPaymentFee)}</span>
+                          </div>
+                          <hr className="border-blue-200" />
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">공항 출발:</span>
+                            <span className="font-semibold">{stat.airportDepartures}개</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">공항 도착:</span>
+                            <span className="font-semibold">{stat.airportArrivals}개</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-700">공항 노선:</span>
+                            <span className="font-semibold">{Math.round((stat.airportDepartures + stat.airportArrivals) / stat.count * 100)}%</span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
-// 성능 최적화 훅
-const useVirtualization = (items, itemHeight = 60, containerHeight = 400) => {
-  const [scrollTop, setScrollTop] = useState(0);
-  
-  const visibleStart = Math.floor(scrollTop / itemHeight);
-  const visibleEnd = Math.min(visibleStart + Math.ceil(containerHeight / itemHeight) + 1, items.length);
-  
-  const visibleItems = items.slice(visibleStart, visibleEnd).map((item, index) => ({
-    ...item,
-    index: visibleStart + index
-  }));
-  
-  const totalHeight = items.length * itemHeight;
-  const offsetY = visibleStart * itemHeight;
-  
-  return {
-    visibleItems,
-    totalHeight,
-    offsetY,
-    onScroll: (e) => setScrollTop(e.target.scrollTop)
-  };
-};
-
-// 성능 모니터링 훅
-const usePerformance = () => {
-  useEffect(() => {
-    if ('performance' in window) {
-      const observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'navigation') {
-            console.log('페이지 로드 시간:', entry.loadEventEnd - entry.loadEventStart, 'ms');
-          }
-        }
-      });
-      
-      observer.observe({ entryTypes: ['navigation'] });
-      
-      return () => observer.disconnect();
-    }
-  }, []);
-};
-
-// PWA 설치 프롬프트
+// PWA 및 최종 개선사항
 const PWAInstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
@@ -749,138 +1568,169 @@ const PWAInstallPrompt = () => {
   );
 };
 
-// 피드백 모달
-const FeedbackModal = ({ isOpen, onClose }) => {
-  const { api, showToast } = useContext(AppContext);
-  const [feedback, setFeedback] = useState({
-    type: 'general',
-    rating: 5,
-    message: '',
-    contact: ''
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!feedback.message.trim()) {
-      showToast('피드백 내용을 입력해주세요.', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await api.sendFeedback({
-        ...feedback,
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        url: window.location.pathname
+// 성능 모니터링 훅
+const usePerformance = () => {
+  useEffect(() => {
+    // 페이지 로드 성능 측정
+    if ('performance' in window) {
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.entryType === 'navigation') {
+            console.log('페이지 로드 시간:', entry.loadEventEnd - entry.loadEventStart, 'ms');
+          }
+        }
       });
       
-      showToast('소중한 의견 감사합니다! 검토 후 반영하겠습니다.', 'success');
-      onClose();
-      setFeedback({ type: 'general', rating: 5, message: '', contact: '' });
-    } catch (error) {
-      showToast('피드백 전송 중 오류가 발생했습니다.', 'error');
-    } finally {
-      setLoading(false);
+      observer.observe({ entryTypes: ['navigation'] });
+      
+      return () => observer.disconnect();
+    }
+  }, []);
+};
+
+// 메인 앱 컴포넌트 최종 업데이트
+const YellorideApp = () => {
+  const [currentPage, setCurrentPage] = useState('home');
+  const [selectedRegion, setSelectedRegion] = useState(() => {
+    return localStorage.getItem('selectedRegion') || 'NY';
+  });
+  const { showToast, ToastContainer } = useToast();
+  const [bookingData, setBookingData] = useState({
+    departure: null,
+    arrival: null,
+    region: 'NY',
+    serviceType: 'airport',
+    step: 1,
+    datetime: {
+      date: '',
+      time: '12:00'
+    },
+    passengers: 1,
+    luggage: 0,
+    vehicle: 'standard',
+    customer: {
+      name: '',
+      phone: '',
+      kakao: ''
+    },
+    flight: {
+      number: '',
+      terminal: ''
+    },
+    bookingNumber: '',
+    totalAmount: 0
+  });
+
+  const api = new YellorideAPI();
+  usePerformance();
+
+  // 지역 선택 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('selectedRegion', selectedRegion);
+  }, [selectedRegion]);
+
+  // 키보드 단축키
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // ESC로 이전 페이지로
+      if (e.key === 'Escape' && currentPage !== 'home') {
+        setCurrentPage('home');
+      }
+      
+      // Ctrl+K로 관리자 페이지 (개발자용)
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        setCurrentPage('admin');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage]);
+
+  // 지역 데이터
+  const regionData = {
+    NY: {
+      name: '뉴욕',
+      desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
+      airports: [
+        { name_kor: 'NY 존에프케네디 공항', name_eng: 'JFK Airport', is_airport: true },
+        { name_kor: 'NY 라과디아 공항', name_eng: 'LGA Airport', is_airport: true },
+        { name_kor: 'NJ 뉴와크 공항', name_eng: 'EWR Airport', is_airport: true }
+      ],
+      places: [
+        { name_kor: 'NY 맨해튼 미드타운', name_eng: 'Manhattan Midtown' },
+        { name_kor: 'NY 맨해튼 다운타운', name_eng: 'Manhattan Downtown' },
+        { name_kor: 'NY 브루클린', name_eng: 'Brooklyn' },
+        { name_kor: 'NY 플러싱', name_eng: 'Flushing' },
+        { name_kor: 'NY 자메이카', name_eng: 'Jamaica' }
+      ]
+    },
+    CA: {
+      name: '캘리포니아',
+      desc: 'LA, 샌프란시스코, LAX/SFO 공항',
+      airports: [
+        { name_kor: 'LAX 국제공항', name_eng: 'LAX Airport', is_airport: true },
+        { name_kor: 'SFO 국제공항', name_eng: 'SFO Airport', is_airport: true },
+        { name_kor: '버뱅크 공항', name_eng: 'Burbank Airport', is_airport: true }
+      ],
+      places: [
+        { name_kor: 'LA 다운타운', name_eng: 'Downtown LA' },
+        { name_kor: 'LA 할리우드', name_eng: 'Hollywood' },
+        { name_kor: 'LA 베벌리힐스', name_eng: 'Beverly Hills' },
+        { name_kor: 'SF 유니언 스퀘어', name_eng: 'Union Square' },
+        { name_kor: 'SF 피셔맨스 워프', name_eng: 'Fisherman\'s Wharf' }
+      ]
     }
   };
 
-  if (!isOpen) return null;
+  const contextValue = {
+    currentPage, setCurrentPage,
+    selectedRegion, setSelectedRegion,
+    bookingData, setBookingData,
+    regionData,
+    api,
+    showToast
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">피드백 보내기</h3>
-            <Button variant="secondary" size="sm" className="p-2" onClick={onClose}>
-              ✕
-            </Button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                피드백 유형
-              </label>
-              <select
-                value={feedback.type}
-                onChange={(e) => setFeedback(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg"
-              >
-                <option value="general">일반 의견</option>
-                <option value="bug">버그 신고</option>
-                <option value="feature">기능 요청</option>
-                <option value="ui">UI/UX 개선</option>
-                <option value="performance">성능 문제</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                만족도 (1-5점)
-              </label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((rating) => (
-                  <button
-                    key={rating}
-                    type="button"
-                    onClick={() => setFeedback(prev => ({ ...prev, rating }))}
-                    className={`w-10 h-10 rounded-full border transition-colors ${
-                      feedback.rating >= rating 
-                        ? 'bg-yellow-400 border-yellow-400 text-white' 
-                        : 'border-gray-300 hover:border-yellow-400'
-                    }`}
-                  >
-                    ⭐
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                상세 내용 *
-              </label>
-              <textarea
-                value={feedback.message}
-                onChange={(e) => setFeedback(prev => ({ ...prev, message: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                rows="4"
-                placeholder="개선사항, 문제점, 또는 의견을 자세히 알려주세요..."
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                연락처 (선택사항)
-              </label>
-              <Input
-                type="email"
-                value={feedback.contact}
-                onChange={(e) => setFeedback(prev => ({ ...prev, contact: e.target.value }))}
-                placeholder="답변이 필요한 경우 이메일을 입력해주세요"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={onClose}>
-                취소
-              </Button>
-              <Button type="submit" className="flex-1" loading={loading}>
-                전송
-              </Button>
-            </div>
-          </form>
+    <AppContext.Provider value={contextValue}>
+      <div className="min-h-screen bg-gray-50">
+        {/* 메타 태그 (실제 프로덕션에서는 HTML head에 위치) */}
+        <div style={{ display: 'none' }}>
+          {/* PWA를 위한 메타 정보는 실제 HTML에서 설정 */}
+          <meta name="theme-color" content="#4285f4" />
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          <meta name="apple-mobile-web-app-title" content="YelloRide" />
+          <link rel="apple-touch-icon" href="/icon-192x192.png" />
+          <link rel="manifest" href="/manifest.json" />
         </div>
+
+        {currentPage === 'home' && <HomePage />}
+        {currentPage === 'booking' && <BookingPage />}
+        {currentPage === 'charter' && <CharterPage />}
+        {currentPage === 'search' && <SearchPage />}
+        {currentPage === 'confirmation' && <ConfirmationPage />}
+        {currentPage === 'admin' && <AdminPage />}
+        
+        {/* 전역 컴포넌트들 */}
+        <ToastContainer />
+        <ConnectionStatus />
+        <PWAInstallPrompt />
+        
+        {/* 개발자 힌트 (프로덕션에서는 제거) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed bottom-2 left-2 text-xs text-gray-400 bg-black bg-opacity-50 text-white px-2 py-1 rounded z-50">
+            ESC: 홈으로 | Ctrl+K: 관리자
+          </div>
+        )}
       </div>
-    </div>
+    </AppContext.Provider>
   );
 };
 
-// 홈페이지 컴포넌트
+// 홈페이지 컴포넌트 개선
 const HomePage = () => {
   const { setCurrentPage, selectedRegion, setSelectedRegion, regionData, bookingData, setBookingData, api, showToast } = useContext(AppContext);
   const [showRegionModal, setShowRegionModal] = useState(false);
@@ -924,6 +1774,7 @@ const HomePage = () => {
     }));
     setShowLocationModal(false);
 
+    // 선택 완료 후 자동으로 경로 검색
     if (locationSelectType === 'arrival' && bookingData.departure) {
       searchRoutes(bookingData.departure, location);
     } else if (locationSelectType === 'departure' && bookingData.arrival) {
@@ -985,6 +1836,7 @@ const HomePage = () => {
       region: selectedRegion
     }));
     
+    // 자동으로 예약 페이지로 이동
     setTimeout(() => {
       startBooking(route);
     }, 500);
@@ -992,6 +1844,7 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 헤더 */}
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -1017,6 +1870,7 @@ const HomePage = () => {
         </div>
       </header>
 
+      {/* 지역 선택 */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-4">
           <div 
@@ -1038,6 +1892,7 @@ const HomePage = () => {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* 여행 계획 카드 */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold mb-6">어디로 모실까요?</h2>
           
@@ -1076,6 +1931,7 @@ const HomePage = () => {
           </div>
         </Card>
 
+        {/* 인기 노선 */}
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <h3 className="font-semibold">인기 노선</h3>
@@ -1113,6 +1969,7 @@ const HomePage = () => {
           )}
         </Card>
 
+        {/* 검색 결과 */}
         {searchResults.length > 0 && (
           <Card className="p-6">
             <h3 className="font-semibold mb-4">검색 결과</h3>
@@ -1152,6 +2009,7 @@ const HomePage = () => {
           </Card>
         )}
 
+        {/* 서비스 메뉴 */}
         <div>
           <h3 className="font-semibold mb-4">서비스 메뉴</h3>
           <div className="grid grid-cols-2 gap-3">
@@ -1189,6 +2047,7 @@ const HomePage = () => {
           </div>
         </div>
 
+        {/* 프로모션 */}
         <Card className="p-6 bg-gradient-to-r from-blue-500 to-green-500 text-white">
           <h3 className="text-lg font-bold mb-2">첫 예약 $10 할인!</h3>
           <p className="text-sm opacity-90 mb-4">신규 고객님께 특별한 혜택을 드립니다</p>
@@ -1198,6 +2057,7 @@ const HomePage = () => {
         </Card>
       </div>
 
+      {/* 예약하기 버튼 */}
       <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
         <Button
           className="w-full shadow-lg"
@@ -1211,6 +2071,7 @@ const HomePage = () => {
         </Button>
       </div>
 
+      {/* 하단 네비게이션 */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
         <div className="max-w-md mx-auto flex">
           <button className="flex-1 py-3 text-center">
@@ -1232,6 +2093,7 @@ const HomePage = () => {
         </div>
       </nav>
 
+      {/* 지역 선택 모달 */}
       {showRegionModal && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50"
@@ -1283,6 +2145,7 @@ const HomePage = () => {
         </div>
       )}
 
+      {/* 위치 선택 모달 */}
       {showLocationModal && (
         <div className="fixed inset-0 bg-white z-50">
           <div className="max-w-md mx-auto h-full flex flex-col">
@@ -1364,18 +2227,16 @@ const BookingPage = () => {
   });
   const [errors, setErrors] = useState({});
   const totalSteps = 4;
-  const isCurrentStepValid = useMemo(
-    () => validateStep(currentStep, false),
-    [currentStep, bookingData]
-  );
 
   useEffect(() => {
+    // 오늘 날짜 설정
     const today = new Date().toISOString().split('T')[0];
     setBookingData(prev => ({
       ...prev,
       datetime: { ...prev.datetime, date: today }
     }));
 
+    // 경로 정보 및 가격 조회
     loadRouteData();
   }, []);
 
@@ -1383,6 +2244,7 @@ const BookingPage = () => {
     if (bookingData.departure && bookingData.arrival) {
       try {
         setLoading(true);
+        // 실제 API 호출로 경로 정보 및 가격 조회
         const response = await api.searchRoute(
           bookingData.departure.split(' - ')[0], 
           bookingData.arrival.split(' - ')[0],
@@ -1391,6 +2253,7 @@ const BookingPage = () => {
         
         if (response.success && response.data.length > 0) {
           setRouteData(response.data[0]);
+          // 가격 정보 업데이트
           setPriceData({
             reservation_fee: response.data[0].reservation_fee || 20,
             local_payment_fee: response.data[0].local_payment_fee || 75,
@@ -1401,6 +2264,7 @@ const BookingPage = () => {
       } catch (error) {
         console.error('경로 정보 조회 오류:', error);
         showToast('경로 정보를 불러오는데 실패했습니다. 기본 요금으로 진행됩니다.', 'warning');
+        // 기본값 유지
       } finally {
         setLoading(false);
       }
@@ -1419,7 +2283,7 @@ const BookingPage = () => {
     return total;
   };
 
-  function validateStep(step, updateErrors = true) {
+  const validateStep = (step) => {
     const newErrors = {};
     
     switch (step) {
@@ -1455,6 +2319,7 @@ const BookingPage = () => {
         if (!bookingData.customer.phone.trim()) {
           newErrors.phone = '전화번호를 입력해주세요.';
         } else {
+          // 전화번호 형식 검증
           const phoneRegex = /^[0-9-+\s()]+$/;
           if (!phoneRegex.test(bookingData.customer.phone)) {
             newErrors.phone = '올바른 전화번호 형식을 입력해주세요.';
@@ -1463,17 +2328,16 @@ const BookingPage = () => {
         break;
         
       case 4:
+        // 최종 확인 단계는 항상 valid
         break;
         
       default:
         return false;
     }
     
-    if (updateErrors) {
-      setErrors(newErrors);
-    }
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }
+  };
 
   const updateBookingData = (field, value) => {
     setBookingData(prev => ({
@@ -1481,6 +2345,7 @@ const BookingPage = () => {
       [field]: value
     }));
     
+    // 에러 클리어
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -1509,6 +2374,7 @@ const BookingPage = () => {
 
     setLoading(true);
     try {
+      // 실제 백엔드 스펙에 맞는 예약 데이터 구성
       const bookingRequest = {
         customer_info: {
           name: bookingData.customer.name,
@@ -1553,6 +2419,7 @@ const BookingPage = () => {
       const response = await api.createBooking(bookingRequest);
       
       if (response.success) {
+        // 예약 번호를 전역 상태에 저장
         setBookingData(prev => ({
           ...prev,
           bookingNumber: response.data.booking_number || 'YR' + Date.now().toString().slice(-6),
@@ -1576,6 +2443,7 @@ const BookingPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 헤더 */}
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
@@ -1587,6 +2455,7 @@ const BookingPage = () => {
         </div>
       </header>
 
+      {/* 진행률 */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex justify-between items-center mb-2">
@@ -1602,6 +2471,7 @@ const BookingPage = () => {
       </div>
 
       <div className="max-w-md mx-auto p-4 pb-32">
+        {/* 경로 정보 카드 */}
         <Card className="p-4 mb-6">
           <div className="flex justify-between items-center mb-4">
             <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
@@ -1629,6 +2499,7 @@ const BookingPage = () => {
           </div>
         </Card>
 
+        {/* 단계별 컨텐츠 */}
         {currentStep === 1 && (
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-6">언제 이용하시나요?</h3>
@@ -1856,6 +2727,7 @@ const BookingPage = () => {
         )}
       </div>
 
+      {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
         <div className="max-w-md mx-auto flex gap-3">
           {currentStep > 1 && (
@@ -1871,7 +2743,7 @@ const BookingPage = () => {
           <Button
             className={currentStep === 1 ? "w-full" : "flex-1"}
             onClick={nextStep}
-            disabled={loading || !isCurrentStepValid}
+            disabled={loading || !validateStep(currentStep)}
           >
             {loading ? (
               <div className="flex items-center gap-2">
@@ -1888,14 +2760,82 @@ const BookingPage = () => {
   );
 };
 
-// 검색 페이지 컴포넌트 (간단히)
+// 검색 페이지 컴포넌트
 const SearchPage = () => {
   const { setCurrentPage, api } = useContext(AppContext);
-  const [searchType, setSearchType] = useState('number');
+  const [searchType, setSearchType] = useState('number'); // 'number' | 'phone'
   const [searchValue, setSearchValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
 
+  const handleSearch = async () => {
+    if (!searchValue.trim()) {
+      alert('검색어를 입력해주세요.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let response;
+      if (searchType === 'number') {
+        // 예약번호로 검색
+        response = await api.getBookingByNumber(searchValue.trim());
+        setResults(response.success ? [response.data] : []);
+      } else {
+        // 전화번호로 검색 (실제로는 별도 API 필요)
+        // 데모용 데이터
+        if (searchValue.includes('1234')) {
+          setResults([
+            {
+              booking_number: 'YR241201DEMO',
+              status: 'confirmed',
+              service_type: '공항 택시',
+              departure: 'JFK 공항',
+              arrival: '맨하탄 미드타운',
+              date: '2024년 12월 5일',
+              time: '오후 2:00',
+              customer_name: '김철수',
+              customer_phone: searchValue,
+              total_amount: 95,
+              created_at: '2024.12.01'
+            }
+          ]);
+        } else {
+          setResults([]);
+        }
+      }
+    } catch (error) {
+      console.error('검색 오류:', error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'pending': { text: '예약 대기', class: 'bg-yellow-100 text-yellow-800' },
+      'confirmed': { text: '예약 확정', class: 'bg-blue-100 text-blue-800' },
+      'driver_assigned': { text: '기사 배정', class: 'bg-green-100 text-green-800' },
+      'completed': { text: '완료', class: 'bg-gray-100 text-gray-800' },
+      'cancelled': { text: '취소됨', class: 'bg-red-100 text-red-800' }
+    };
+    
+    const statusInfo = statusMap[status] || statusMap['pending'];
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusInfo.class}`}>
+        {statusInfo.text}
+      </span>
+    );
+  };
+
+  const openDetail = (booking) => {
+    setSelectedBooking(booking);
+    setShowDetail(true);
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -1908,22 +2848,341 @@ const SearchPage = () => {
           </div>
         </div>
       </header>
+
+      {/* 검색 탭 */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-md mx-auto flex">
+          <button
+            className={`flex-1 py-4 text-center font-medium border-b-2 transition-colors ${
+              searchType === 'number' 
+                ? 'border-blue-500 text-blue-600' 
+                : 'border-transparent text-gray-500'
+            }`}
+            onClick={() => setSearchType('number')}
+          >
+            예약번호
+          </button>
+          <button
+            className={`flex-1 py-4 text-center font-medium border-b-2 transition-colors ${
+              searchType === 'phone' 
+                ? 'border-blue-500 text-blue-600' 
+                : 'border-transparent text-gray-500'
+            }`}
+            onClick={() => setSearchType('phone')}
+          >
+            전화번호
+          </button>
+        </div>
+      </div>
       
       <div className="max-w-md mx-auto p-4">
-        <Card className="p-6 text-center">
-          <div className="text-4xl mb-4">🔍</div>
-          <h2 className="text-lg font-semibold mb-2">예약 내역을 조회하세요</h2>
-          <p className="text-gray-600">예약번호를 입력해주세요</p>
+        <Card className="p-6 mb-6">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">🔍</div>
+            <h2 className="text-lg font-semibold mb-2">예약 내역을 조회하세요</h2>
+            <p className="text-gray-600">
+              {searchType === 'number' 
+                ? '예약번호를 입력해주세요' 
+                : '예약 시 등록한 전화번호를 입력해주세요'
+              }
+            </p>
+          </div>
+          
+          <Input
+            icon={searchType === 'number' ? Search : Phone}
+            placeholder={searchType === 'number' ? '예: YR241201ABCD' : '010-1234-5678'}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            className="mb-4"
+          />
+          
+          <Button 
+            className="w-full"
+            onClick={handleSearch}
+            disabled={loading || !searchValue.trim()}
+          >
+            {loading ? '조회 중...' : '조회하기'}
+          </Button>
+        </Card>
+
+        {/* 검색 결과 */}
+        {results.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold">검색 결과</h3>
+              <span className="text-sm text-gray-600">{results.length}개</span>
+            </div>
+            
+            {results.map((booking, index) => (
+              <Card key={index} className="p-4" onClick={() => openDetail(booking)}>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="font-semibold">{booking.booking_number}</div>
+                  {getStatusBadge(booking.status)}
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Car className="w-4 h-4 text-gray-400" />
+                    <span>{booking.service_type}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span>{booking.departure} → {booking.arrival}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span>{booking.date} {booking.time}</span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-500">예약일: {booking.created_at}</span>
+                  <span className="font-bold text-yellow-600">${booking.total_amount}</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* 빈 결과 */}
+        {!loading && results.length === 0 && searchValue && (
+          <Card className="p-8 text-center">
+            <div className="text-4xl mb-4">📭</div>
+            <h3 className="font-semibold mb-2">예약 내역이 없습니다</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              입력하신 정보로 등록된 예약이 없습니다.<br />
+              예약번호나 전화번호를 다시 확인해주세요.
+            </p>
+            <Button variant="outline" onClick={() => setSearchValue('')}>
+              다시 검색
+            </Button>
+          </Card>
+        )}
+
+        {/* 빠른 메뉴 */}
+        <Card className="p-6 mt-6">
+          <h3 className="font-semibold mb-4">빠른 메뉴</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => setCurrentPage('booking')}>
+              <div className="text-center">
+                <div className="text-xl mb-1">🚕</div>
+                <div className="text-sm">새 예약</div>
+              </div>
+            </Button>
+            <Button variant="outline" onClick={() => setSearchValue('YR241201DEMO')}>
+              <div className="text-center">
+                <div className="text-xl mb-1">📱</div>
+                <div className="text-sm">예약 문의</div>
+              </div>
+            </Button>
+          </div>
         </Card>
       </div>
+
+      {/* 상세 모달 */}
+      {showDetail && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
+          <div className="bg-white w-full max-w-md mx-auto rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold">예약 상세 정보</h3>
+              <Button variant="secondary" size="sm" className="p-2" onClick={() => setShowDetail(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <div className="text-sm text-gray-600 mb-1">예약번호</div>
+                <div className="font-semibold">{selectedBooking.booking_number}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-600 mb-1">상태</div>
+                <div>{getStatusBadge(selectedBooking.status)}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-600 mb-1">서비스</div>
+                <div className="font-medium">{selectedBooking.service_type}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-600 mb-1">이용 일시</div>
+                <div className="font-medium">{selectedBooking.date} {selectedBooking.time}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-600 mb-1">경로</div>
+                <div className="font-medium">{selectedBooking.departure} → {selectedBooking.arrival}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-gray-600 mb-1">예약자</div>
+                <div className="font-medium">{selectedBooking.customer_name} ({selectedBooking.customer_phone})</div>
+              </div>
+              
+              <div className="pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600 mb-1">총 요금</div>
+                <div className="text-xl font-bold text-yellow-600">${selectedBooking.total_amount}</div>
+              </div>
+            </div>
+            
+            <div className="mt-6 space-y-3">
+              <Button className="w-full" onClick={() => {
+                setShowDetail(false);
+                setCurrentPage('confirmation');
+              }}>
+                예약 확인서 보기
+              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline">수정</Button>
+                <Button variant="outline">취소</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// 대절 페이지 컴포넌트 (간단히)
+// 대절 페이지
 const CharterPage = () => {
-  const { setCurrentPage } = useContext(AppContext);
+  const { setCurrentPage, selectedRegion, regionData, api } = useContext(AppContext);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const totalSteps = 5;
   
+  const [charterData, setCharterData] = useState({
+    purpose: null,
+    hours: 1,
+    waitingLocation: null,
+    date: '',
+    time: '',
+    passengers: 1,
+    luggage: 0,
+    vehicle: 'standard',
+    customer: {
+      name: '',
+      phone: '',
+      kakao: '',
+      requests: ''
+    }
+  });
+
+  useEffect(() => {
+    // 오늘 날짜와 시간 설정
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    const timeString = now.toTimeString().slice(0, 5);
+    
+    setCharterData(prev => ({
+      ...prev,
+      date: today,
+      time: timeString
+    }));
+  }, []);
+
+  const updateCharterData = (field, value) => {
+    setCharterData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const calculateTotalPrice = () => {
+    let hourlyRate = 60; // 기본 시간당 요금
+    
+    if (charterData.vehicle === 'xl') {
+      hourlyRate = 70;
+    } else if (charterData.vehicle === 'premium') {
+      hourlyRate = 85;
+    }
+    
+    return hourlyRate * charterData.hours + 30; // 예약비 $30 포함
+  };
+
+  const validateStep = (step) => {
+    switch (step) {
+      case 1:
+        return charterData.purpose;
+      case 2:
+        return charterData.hours > 0 && charterData.waitingLocation;
+      case 3:
+        return charterData.date && charterData.time;
+      case 4:
+        return charterData.customer.name && charterData.customer.phone;
+      case 5:
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      completeCharter();
+    }
+  };
+
+  const completeCharter = async () => {
+    setLoading(true);
+    try {
+      const charterRequest = {
+        customer_info: {
+          name: charterData.customer.name,
+          phone: charterData.customer.phone,
+          kakao_id: charterData.customer.kakao || ''
+        },
+        service_info: {
+          type: 'charter',
+          region: selectedRegion
+        },
+        trip_details: {
+          departure: {
+            location: charterData.waitingLocation,
+            datetime: new Date(`${charterData.date}T${charterData.time}`)
+          },
+          arrival: {
+            location: charterData.waitingLocation
+          }
+        },
+        charter_info: {
+          hours: charterData.hours,
+          purpose: charterData.purpose,
+          waiting_location: charterData.waitingLocation,
+          special_requests: charterData.customer.requests,
+          total_amount: calculateTotalPrice()
+        },
+        vehicles: [{
+          type: charterData.vehicle,
+          passengers: charterData.passengers,
+          luggage: charterData.luggage
+        }],
+        passenger_info: {
+          total_passengers: charterData.passengers,
+          total_luggage: charterData.luggage
+        }
+      };
+
+      // 시뮬레이션 (실제로는 API 호출)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      alert(`대절 예약이 완료되었습니다!\n예약번호: CH${Date.now().toString().slice(-6)}\n총 요금: ${calculateTotalPrice()}`);
+      setCurrentPage('home');
+    } catch (error) {
+      alert('대절 예약 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const progress = (currentStep / totalSteps) * 100;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -1936,21 +3195,427 @@ const CharterPage = () => {
           </div>
         </div>
       </header>
-      
-      <div className="max-w-md mx-auto p-4">
-        <Card className="p-6 text-center">
-          <div className="text-4xl mb-4">🚙</div>
-          <h2 className="text-lg font-semibold mb-2">시간제 택시 대절</h2>
-          <p className="text-gray-600">원하는 시간만큼 편리하게 이용하세요</p>
-        </Card>
+
+      {/* 진행률 */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-md mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-600">{currentStep}단계 / {totalSteps}단계</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto p-4 pb-32">
+        {/* 1단계: 대절 용도 선택 */}
+        {currentStep === 1 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-2">대절 용도를 선택해주세요</h3>
+            <p className="text-gray-600 mb-6">용도에 맞는 최적의 서비스를 제공해드립니다</p>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'tourism', icon: '🗽', title: '관광', desc: '여행지 투어' },
+                { id: 'shopping', icon: '🛍', title: '쇼핑', desc: '쇼핑몰 이동' },
+                { id: 'business', icon: '💼', title: '업무', desc: '업무 미팅' },
+                { id: 'medical', icon: '🏥', title: '병원', desc: '병원 방문' },
+                { id: 'event', icon: '🎉', title: '행사', desc: '특별 행사' },
+                { id: 'other', icon: '📋', title: '기타', desc: '기타 용도' }
+              ].map((purpose) => (
+                <div
+                  key={purpose.id}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all text-center ${
+                    charterData.purpose === purpose.id 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => updateCharterData('purpose', purpose.id)}
+                >
+                  <div className="text-2xl mb-2">{purpose.icon}</div>
+                  <div className="font-semibold text-sm mb-1">{purpose.title}</div>
+                  <div className="text-xs text-gray-600">{purpose.desc}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* 2단계: 시간 및 대기 장소 선택 */}
+        {currentStep === 2 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-2">대절 시간을 선택해주세요</h3>
+            <p className="text-gray-600 mb-6">시간당 $60, 최소 1시간부터 이용 가능합니다</p>
+            
+            <div className="mb-6">
+              <h4 className="font-medium mb-3">대절 시간</h4>
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {[1, 2, 3, 4, 6, 8, 10, 12].map((hour) => (
+                  <button
+                    key={hour}
+                    className={`p-3 rounded-lg border text-sm font-medium transition-all ${
+                      charterData.hours === hour 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => updateCharterData('hours', hour)}
+                  >
+                    {hour}시간
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <span className="text-sm">직접 입력:</span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={charterData.hours}
+                    onChange={(e) => updateCharterData('hours', parseInt(e.target.value) || 1)}
+                    className="w-20 text-center"
+                  />
+                  <span className="text-sm text-gray-600">시간</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-3">대기 장소</h4>
+              <div className="space-y-2">
+                {regionData[selectedRegion]?.places?.slice(0, 4).map((location, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      charterData.waitingLocation === location.name_kor 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => updateCharterData('waitingLocation', location.name_kor)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="font-medium text-sm">{location.name_kor}</div>
+                        <div className="text-xs text-gray-600">{location.name_eng}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* 3단계: 날짜/시간 및 승객 정보 */}
+        {currentStep === 3 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-6">시작 일정을 설정해주세요</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <Input
+                type="date"
+                label="시작 날짜"
+                value={charterData.date}
+                onChange={(e) => updateCharterData('date', e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+              <Input
+                type="time"
+                label="시작 시간"
+                value={charterData.time}
+                onChange={(e) => updateCharterData('time', e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium text-sm">승객 수</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full"
+                    onClick={() => charterData.passengers > 1 && updateCharterData('passengers', charterData.passengers - 1)}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="font-semibold">{charterData.passengers}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full"
+                    onClick={() => updateCharterData('passengers', charterData.passengers + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Luggage className="w-4 h-4 text-gray-400" />
+                  <span className="font-medium text-sm">짐 개수</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full"
+                    onClick={() => charterData.luggage > 0 && updateCharterData('luggage', charterData.luggage - 1)}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </Button>
+                  <span className="font-semibold">{charterData.luggage}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-8 h-8 p-0 rounded-full"
+                    onClick={() => updateCharterData('luggage', charterData.luggage + 1)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <h4 className="font-medium mb-4">차량 선택</h4>
+            <div className="space-y-3">
+              {[
+                { type: 'standard', name: '일반 차량', price: '시간당 $60', desc: '최대 4명 승차 가능한 일반 승용차', icon: '🚗' },
+                { type: 'xl', name: '대형 차량', price: '시간당 $70', desc: '최대 6명 승차 가능한 SUV 또는 밴', icon: '🚙' },
+                { type: 'premium', name: '프리미엄 차량', price: '시간당 $85', desc: '최대 4명 승차 가능한 고급 승용차', icon: '🏆' }
+              ].map((vehicle) => (
+                <div
+                  key={vehicle.type}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                    charterData.vehicle === vehicle.type 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => updateCharterData('vehicle', vehicle.type)}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{vehicle.icon}</span>
+                      <span className="font-semibold">{vehicle.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-blue-600">{vehicle.price}</span>
+                  </div>
+                  <div className="text-sm text-gray-600 ml-8">{vehicle.desc}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* 4단계: 고객 정보 */}
+        {currentStep === 4 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-6">연락처 정보를 입력해주세요</h3>
+            
+            <div className="space-y-4">
+              <Input
+                label="이름 *"
+                placeholder="성함을 입력해주세요"
+                value={charterData.customer.name}
+                onChange={(e) => setCharterData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, name: e.target.value }
+                }))}
+              />
+              <Input
+                label="전화번호 *"
+                type="tel"
+                placeholder="010-1234-5678"
+                value={charterData.customer.phone}
+                onChange={(e) => setCharterData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, phone: e.target.value }
+                }))}
+              />
+              <Input
+                label="카카오톡 ID (선택사항)"
+                placeholder="원활한 소통을 위해 입력해주세요"
+                value={charterData.customer.kakao}
+                onChange={(e) => setCharterData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, kakao: e.target.value }
+                }))}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  요청사항 (선택사항)
+                </label>
+                <textarea
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                  rows="3"
+                  placeholder="특별한 요청사항이 있으시면 알려주세요"
+                  value={charterData.customer.requests}
+                  onChange={(e) => setCharterData(prev => ({
+                    ...prev,
+                    customer: { ...prev.customer, requests: e.target.value }
+                  }))}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* 5단계: 예약 확인 */}
+        {currentStep === 5 && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-6">대절 내용을 확인해주세요</h3>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between">
+                <span className="text-gray-600">용도</span>
+                <span className="font-medium">
+                  {{
+                    'tourism': '관광',
+                    'shopping': '쇼핑', 
+                    'business': '업무',
+                    'medical': '병원',
+                    'event': '행사',
+                    'other': '기타'
+                  }[charterData.purpose]}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">대기 장소</span>
+                <span className="font-medium text-right max-w-[60%]">{charterData.waitingLocation}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">시작 일시</span>
+                <span className="font-medium">{charterData.date} {charterData.time}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">대절 시간</span>
+                <span className="font-medium">{charterData.hours}시간</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">승객 정보</span>
+                <span className="font-medium">{charterData.passengers}명, 짐 {charterData.luggage}개</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">선택 차량</span>
+                <span className="font-medium">
+                  {{
+                    'standard': '일반 차량',
+                    'xl': '대형 차량',
+                    'premium': '프리미엄 차량'
+                  }[charterData.vehicle]}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">연락처</span>
+                <span className="font-medium text-right">{charterData.customer.name} ({charterData.customer.phone})</span>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex justify-between font-semibold text-lg">
+                <span>총 결제 금액</span>
+                <span className="text-yellow-600">${calculateTotalPrice()}</span>
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                예약비 $30 + 시간당 요금 포함
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* 하단 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="max-w-md mx-auto flex gap-3">
+          {currentStep > 1 && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setCurrentStep(prev => prev - 1)}
+              disabled={loading}
+            >
+              이전
+            </Button>
+          )}
+          <Button
+            className={currentStep === 1 ? "w-full" : "flex-1"}
+            onClick={nextStep}
+            disabled={loading || !validateStep(currentStep)}
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                처리 중...
+              </div>
+            ) : (
+              currentStep === totalSteps ? '대절 완료' : '다음'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
 };
 
-// 예약 확인 페이지 컴포넌트 (간단히)
 const ConfirmationPage = () => {
   const { setCurrentPage, bookingData } = useContext(AppContext);
+  const [copied, setCopied] = useState(false);
+
+  const copyBookingNumber = async () => {
+    const bookingNumber = bookingData.bookingNumber || 'YR241201DEMO';
+    
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(bookingNumber);
+      } else {
+        // 폴백 방법
+        const textArea = document.createElement('textarea');
+        textArea.value = bookingNumber;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('복사 실패:', error);
+    }
+  };
+
+  const formatDateTime = (date, time) => {
+    if (!date || !time) return '-';
+    
+    const dateObj = new Date(date);
+    const dateStr = dateObj.toLocaleDateString('ko-KR', { 
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric',
+      weekday: 'short'
+    });
+    
+    return `${dateStr} ${time}`;
+  };
+
+  const getVehicleName = (type) => {
+    const vehicles = {
+      'standard': '일반 택시',
+      'xl': '대형 택시',
+      'premium': '프리미엄 택시'
+    };
+    return vehicles[type] || '일반 택시';
+  };
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1961,158 +3626,182 @@ const ConfirmationPage = () => {
       </header>
 
       <div className="max-w-md mx-auto">
+        {/* 성공 헤더 */}
         <div className="bg-white p-8 text-center">
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
             <CheckCircle className="w-10 h-10 text-white" />
           </div>
           <h2 className="text-2xl font-bold mb-2">예약이 완료되었습니다!</h2>
           <p className="text-gray-600 mb-8">곧 기사님이 배정될 예정입니다</p>
-          
+        </div>
+
+        <div className="px-4 space-y-4">
+          {/* 예약번호 카드 */}
           <Card className="p-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black">
             <div className="text-center">
               <div className="text-sm opacity-80 mb-2">예약번호</div>
-              <div className="text-2xl font-bold tracking-wide">
+              <div className="text-2xl font-bold tracking-wide mb-4">
                 {bookingData.bookingNumber || 'YR241201DEMO'}
+              </div>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={copyBookingNumber}
+                className="bg-black bg-opacity-10 hover:bg-opacity-20 border-0"
+              >
+                {copied ? '✅ 복사완료!' : '📋 복사하기'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* 예약 상세 정보 */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                🚕
+              </div>
+              <div>
+                <h3 className="font-semibold">예약 정보</h3>
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">예약 확인중</span>
+              </div>
+            </div>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">서비스</span>
+                <span className="font-medium">
+                  {bookingData.serviceType === 'airport' ? '공항 택시' : '일반 택시'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">일시</span>
+                <span className="font-medium">
+                  {formatDateTime(bookingData.datetime?.date, bookingData.datetime?.time)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">출발</span>
+                <span className="font-medium text-right max-w-[60%]">
+                  {bookingData.departure?.split(' - ')[0] || bookingData.departure}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">도착</span>
+                <span className="font-medium text-right max-w-[60%]">
+                  {bookingData.arrival?.split(' - ')[0] || bookingData.arrival}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">승객/짐</span>
+                <span className="font-medium">{bookingData.passengers}명 / 짐 {bookingData.luggage}개</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">차량</span>
+                <span className="font-medium">{getVehicleName(bookingData.vehicle)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">예약자</span>
+                <span className="font-medium text-right">
+                  {bookingData.customer?.name} ({bookingData.customer?.phone})
+                </span>
               </div>
             </div>
           </Card>
-        </div>
-        
-        <div className="p-4">
-          <Button className="w-full" onClick={() => setCurrentPage('home')}>
-            홈으로
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
-// 관리자 페이지 컴포넌트 (간단히)
-const AdminPage = () => {
-  const { setCurrentPage } = useContext(AppContext);
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-xl font-bold">택시 데이터 관리</h1>
+          {/* 결제 정보 */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                💰
+              </div>
+              <h3 className="font-semibold">결제 정보</h3>
             </div>
-            <div className="text-sm text-gray-600">
-              관리자 모드
+            
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">예약비</span>
+                <span>$20</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">서비스비</span>
+                <span>$75</span>
+              </div>
+              {bookingData.vehicle !== 'standard' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">차량 업그레이드</span>
+                  <span>
+                    ${bookingData.vehicle === 'xl' ? '10' : '25'}
+                  </span>
+                </div>
+              )}
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <div className="flex justify-between font-semibold text-base">
+                  <span>총 결제금액</span>
+                  <span className="text-yellow-600">${bookingData.totalAmount || '95'}</span>
+                </div>
+              </div>
             </div>
+          </Card>
+
+          {/* 안내사항 */}
+          <Card className="p-6 bg-blue-50">
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              <span>📢</span>
+              이용 안내
+            </h4>
+            <div className="space-y-2 text-sm text-gray-700">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500">•</span>
+                <span>예약 확정 후 기사님 정보를 문자로 안내드립니다</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500">•</span>
+                <span>출발 1시간 전까지 취소 가능합니다</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500">•</span>
+                <span>기사님께 예약번호를 알려주세요</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-blue-500">•</span>
+                <span>늦으실 경우 미리 연락 부탁드립니다</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* 고객센터 */}
+          <Card className="p-6">
+            <h4 className="font-semibold mb-4 text-center">도움이 필요하신가요?</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <span className="text-xl mb-2">📞</span>
+                <span className="text-xs text-gray-600">전화하기</span>
+              </button>
+              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <span className="text-xl mb-2">💬</span>
+                <span className="text-xs text-gray-600">카카오톡</span>
+              </button>
+              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <span className="text-xl mb-2">✉️</span>
+                <span className="text-xs text-gray-600">이메일</span>
+              </button>
+            </div>
+          </Card>
+        </div>
+
+        {/* 하단 버튼 */}
+        <div className="p-4 space-y-3 pb-8">
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => setCurrentPage('search')}>
+              예약 내역
+            </Button>
+            <Button onClick={() => setCurrentPage('home')}>
+              홈으로
+            </Button>
           </div>
         </div>
-      </header>
-      
-      <div className="max-w-6xl mx-auto p-6">
-        <Card className="p-6 text-center">
-          <div className="text-4xl mb-4">⚙️</div>
-          <h2 className="text-lg font-semibold mb-2">관리자 페이지</h2>
-          <p className="text-gray-600">택시 데이터를 관리할 수 있습니다</p>
-        </Card>
       </div>
     </div>
-  );
-};
-
-// 메인 앱 컴포넌트
-const YellorideApp = () => {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedRegion, setSelectedRegion] = useState(() => {
-    return localStorage.getItem('selectedRegion') || 'NY';
-  });
-  const { showToast, ToastContainer } = useToast();
-  const [bookingData, setBookingData] = useState({
-    departure: null,
-    arrival: null,
-    region: 'NY',
-    serviceType: 'airport',
-    step: 1,
-    datetime: {
-      date: '',
-      time: '12:00'
-    },
-    passengers: 1,
-    luggage: 0,
-    vehicle: 'standard',
-    customer: {
-      name: '',
-      phone: '',
-      kakao: ''
-    },
-    flight: {
-      number: '',
-      terminal: ''
-    },
-    bookingNumber: '',
-    totalAmount: 0
-  });
-
-  const api = useMemo(() => new YellorideAPI(), []);
-  usePerformance();
-
-  useEffect(() => {
-    localStorage.setItem('selectedRegion', selectedRegion);
-  }, [selectedRegion]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && currentPage !== 'home') {
-        setCurrentPage('home');
-      }
-      
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault();
-        setCurrentPage('admin');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage]);
-
-  const regionData = REGION_DATA;
-
-  const contextValue = useMemo(() => ({
-    currentPage,
-    setCurrentPage,
-    selectedRegion,
-    setSelectedRegion,
-    bookingData,
-    setBookingData,
-    regionData,
-    api,
-    showToast
-  }), [currentPage, selectedRegion, bookingData, regionData, api, showToast]);
-  return (
-    <AppContext.Provider value={contextValue}>
-      <ErrorBoundary>
-        <div className="min-h-screen bg-gray-50">
-          {currentPage === 'home' && <HomePage />}
-          {currentPage === 'booking' && <BookingPage />}
-          {currentPage === 'charter' && <CharterPage />}
-          {currentPage === 'search' && <SearchPage />}
-          {currentPage === 'confirmation' && <ConfirmationPage />}
-          {currentPage === 'admin' && <AdminPage />}
-          
-          <ToastContainer />
-          <ConnectionStatus />
-          <PWAInstallPrompt />
-          
-          {process.env.NODE_ENV === 'development' && (
-            <div className="fixed bottom-2 left-2 text-xs text-gray-400 bg-black bg-opacity-50 text-white px-2 py-1 rounded z-50">
-              ESC: 홈으로 | Ctrl+K: 관리자
-            </div>
-          )}
-        </div>
-      </ErrorBoundary>
-    </AppContext.Provider>
   );
 };
 
