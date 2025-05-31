@@ -1364,6 +1364,10 @@ const BookingPage = () => {
   });
   const [errors, setErrors] = useState({});
   const totalSteps = 4;
+  const isCurrentStepValid = useMemo(
+    () => validateStep(currentStep, false),
+    [currentStep, bookingData]
+  );
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -1415,7 +1419,7 @@ const BookingPage = () => {
     return total;
   };
 
-  const validateStep = (step) => {
+  const validateStep = (step, updateErrors = true) => {
     const newErrors = {};
     
     switch (step) {
@@ -1465,7 +1469,9 @@ const BookingPage = () => {
         return false;
     }
     
-    setErrors(newErrors);
+    if (updateErrors) {
+      setErrors(newErrors);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -1865,7 +1871,7 @@ const BookingPage = () => {
           <Button
             className={currentStep === 1 ? "w-full" : "flex-1"}
             onClick={nextStep}
-            disabled={loading || !validateStep(currentStep)}
+            disabled={loading || !isCurrentStepValid}
           >
             {loading ? (
               <div className="flex items-center gap-2">
