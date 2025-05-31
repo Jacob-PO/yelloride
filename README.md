@@ -129,7 +129,10 @@ npm start
 cd backend
 npm run seed        # 전체 샘플 데이터 생성
 npm run seed:taxi   # 택시 데이터만 생성
+npm run import:json -- --clear   # JSON 파일로 모든 택시 노선 갱신
 ```
+
+백엔드 서버를 처음 실행하면 데이터베이스에 노선이 없는 경우 `backend/data/taxiitems_full.json` 파일을 읽어 자동으로 채워 넣습니다.
 
 ### 프로덕션 빌드
 ```bash
