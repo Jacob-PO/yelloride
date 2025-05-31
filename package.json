@@ -11,7 +11,8 @@
     "start": "cd backend && npm start",
     "build": "cd frontend && npm run build",
     "seed:taxi": "cd backend && node scripts/seedTaxiData.js",
-    "import:excel": "cd backend && node scripts/importTaxiData.js"
+    "import:excel": "cd backend && node scripts/importTaxiData.js",
+    "test": "cd frontend && npm test"
   },
   "keywords": ["taxi", "booking", "yelloride"],
   "author": "YelloRide Team",
