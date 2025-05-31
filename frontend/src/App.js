@@ -117,6 +117,11 @@ class YellorideAPI {
     return this.requestWithRetry(`/taxi/route?${params}`);
   }
 
+  async getArrivals(departure, region, lang = 'kor') {
+    const params = new URLSearchParams({ departure, region, lang });
+    return this.requestWithRetry(`/taxi/arrivals?${params}`);
+  }
+
   async getStats() {
     return this.requestWithRetry('/taxi/stats');
   }
@@ -1227,15 +1232,28 @@ const HomePage = () => {
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationSelectType, setLocationSelectType] = useState('departure');
+  const [availableArrivals, setAvailableArrivals] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [popularRoutes, setPopularRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const currentRegionData = regionData[selectedRegion];
+  const airportsList = (currentRegionData?.airports || []).filter(
+    (loc) => !availableArrivals || availableArrivals.includes(loc.name_kor)
+  );
+  const placesList = (currentRegionData?.places || []).filter(
+    (loc) => !availableArrivals || availableArrivals.includes(loc.name_kor)
+  );
 
   useEffect(() => {
     loadPopularRoutes();
   }, [selectedRegion]);
+
+  useEffect(() => {
+    if (showLocationModal && locationSelectType === 'arrival' && bookingData.departure) {
+      fetchArrivals();
+    }
+  }, [showLocationModal, locationSelectType, bookingData.departure]);
 
   const loadPopularRoutes = async () => {
     try {
@@ -1255,6 +1273,25 @@ const HomePage = () => {
     }
   };
 
+  const fetchArrivals = async () => {
+    try {
+      const response = await api.getArrivals(
+        bookingData.departure.split(' - ')[0],
+        selectedRegion,
+        'kor'
+      );
+
+      if (response.success && Array.isArray(response.data)) {
+        setAvailableArrivals(response.data);
+      } else {
+        setAvailableArrivals([]);
+      }
+    } catch (error) {
+      console.error('도착지 목록 로드 오류:', error);
+      setAvailableArrivals([]);
+    }
+  };
+
   const selectLocation = (type) => {
     setLocationSelectType(type);
     setShowLocationModal(true);
@@ -1266,6 +1303,10 @@ const HomePage = () => {
       [locationSelectType]: location
     }));
     setShowLocationModal(false);
+
+    if (locationSelectType === 'departure') {
+      setAvailableArrivals(null);
+    }
 
     // 선택 완료 후 자동으로 경로 검색
     if (locationSelectType === 'arrival' && bookingData.departure) {
@@ -1666,7 +1707,7 @@ const HomePage = () => {
                   공항
                 </h4>
                 <div className="space-y-2">
-                  {(currentRegionData?.airports || []).map((location, index) => (
+                  {airportsList.map((location, index) => (
                     <button
                       key={index}
                       className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1686,7 +1727,7 @@ const HomePage = () => {
                   일반 지역
                 </h4>
                 <div className="space-y-2">
-                  {(currentRegionData?.places || []).map((location, index) => (
+                  {placesList.map((location, index) => (
                     <button
                       key={index}
                       className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1698,6 +1739,9 @@ const HomePage = () => {
                     </button>
                   ))}
                 </div>
+                {airportsList.length === 0 && placesList.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-4">선택 가능한 도착지가 없습니다.</p>
+                )}
               </div>
             </div>
           </div>

@@ -217,6 +217,48 @@ router.get('/route', async (req, res) => {
   }
 });
 
+// 출발지 기준 사용 가능한 도착지 목록 조회
+router.get('/arrivals', async (req, res) => {
+  try {
+    const { departure, region, lang = 'kor' } = req.query;
+
+    if (!departure) {
+      return res.status(400).json({
+        success: false,
+        message: '출발지를 입력해주세요.'
+      });
+    }
+
+    const filter = { is_active: true };
+
+    if (region) {
+      filter.region = region.toUpperCase();
+    }
+
+    if (lang === 'eng') {
+      filter.departure_eng = departure;
+    } else {
+      filter.departure_kor = departure;
+    }
+
+    const field = lang === 'eng' ? 'arrival_eng' : 'arrival_kor';
+    let arrivals = await TaxiItem.find(filter).distinct(field);
+    arrivals = arrivals.sort();
+
+    res.json({
+      success: true,
+      data: arrivals
+    });
+  } catch (error) {
+    console.error('도착지 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '도착지 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+});
+
 // 지역별 통계
 router.get('/stats', async (req, res) => {
   try {
