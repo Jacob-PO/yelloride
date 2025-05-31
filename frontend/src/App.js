@@ -1298,8 +1298,8 @@ const HomePage = () => {
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationSelectType, setLocationSelectType] = useState('departure');
-  const [availableArrivals, setAvailableArrivals] = useState(null);
-  const [availableDepartures, setAvailableDepartures] = useState(null);
+  const [uniqueDepartures, setUniqueDepartures] = useState([]);
+  const [filteredArrivals, setFilteredArrivals] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [popularRoutes, setPopularRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1309,7 +1309,7 @@ const HomePage = () => {
   const currentRegionData = regionData[selectedRegion] || { airports: [], places: [] };
 
   const computeLocationLists = () => {
-    const list = locationSelectType === 'departure' ? availableDepartures : availableArrivals;
+    const list = locationSelectType === 'departure' ? uniqueDepartures : filteredArrivals;
 
     if (Array.isArray(list) && list.length > 0) {
       const airports = list.filter(l => l.is_airport === 'Y' || l.is_airport === true);
@@ -1317,10 +1317,7 @@ const HomePage = () => {
       return { airportsList: airports, placesList: places };
     }
 
-    return {
-      airportsList: currentRegionData?.airports || [],
-      placesList: currentRegionData?.places || []
-    };
+    return { airportsList: [], placesList: [] };
   };
 
   const { airportsList, placesList } = computeLocationLists();
@@ -1328,8 +1325,6 @@ const HomePage = () => {
   useEffect(() => {
     if (!loadingRegions && selectedRegion) {
       loadPopularRoutes();
-      setAvailableDepartures(null);
-      setAvailableArrivals(null);
     }
   }, [selectedRegion, loadingRegions]);
 
@@ -1338,16 +1333,24 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    if (showLocationModal && locationSelectType === 'arrival' && bookingData.departure) {
-      fetchArrivals();
+    if (bookingData.departure) {
+      const map = new Map();
+      allRoutes.forEach(r => {
+        if (r.departure_kor === bookingData.departure) {
+          if (!map.has(r.arrival_kor)) {
+            map.set(r.arrival_kor, {
+              name_kor: r.arrival_kor,
+              name_eng: r.arrival_eng,
+              is_airport: r.arrival_is_airport,
+            });
+          }
+        }
+      });
+      setFilteredArrivals(Array.from(map.values()));
+    } else {
+      setFilteredArrivals([]);
     }
-  }, [showLocationModal, locationSelectType, bookingData.departure]);
-
-  useEffect(() => {
-    if (showLocationModal && locationSelectType === 'departure') {
-      fetchDepartures();
-    }
-  }, [showLocationModal, locationSelectType, selectedRegion]);
+  }, [bookingData.departure, allRoutes]);
 
   const loadPopularRoutes = async () => {
     try {
@@ -1373,8 +1376,20 @@ const HomePage = () => {
       const response = await api.getAllTaxiItems();
       if (response.success && Array.isArray(response.data)) {
         setAllRoutes(response.data);
+        const map = new Map();
+        response.data.forEach(r => {
+          if (!map.has(r.departure_kor)) {
+            map.set(r.departure_kor, {
+              name_kor: r.departure_kor,
+              name_eng: r.departure_eng,
+              is_airport: r.departure_is_airport,
+            });
+          }
+        });
+        setUniqueDepartures(Array.from(map.values()));
       } else {
         setAllRoutes([]);
+        setUniqueDepartures([]);
       }
     } catch (error) {
       console.error('전체 노선 로드 오류:', error);
@@ -1384,51 +1399,11 @@ const HomePage = () => {
     }
   };
 
-  const fetchArrivals = async () => {
-    try {
-      const response = await api.getArrivals(
-        bookingData.departure,
-        selectedRegion,
-        'kor'
-      );
-
-      if (response.success && Array.isArray(response.data)) {
-        setAvailableArrivals(response.data);
-      } else {
-        setAvailableArrivals([]);
-      }
-    } catch (error) {
-      console.error('도착지 목록 로드 오류:', error);
-      setAvailableArrivals([]);
-    }
-  };
-
-  const fetchDepartures = async () => {
-    try {
-      const response = await api.getDepartures(
-        selectedRegion,
-        'kor'
-      );
-
-      if (response.success && Array.isArray(response.data)) {
-        setAvailableDepartures(response.data);
-      } else {
-        setAvailableDepartures([]);
-      }
-    } catch (error) {
-      console.error('출발지 목록 로드 오류:', error);
-      setAvailableDepartures([]);
-    }
-  };
+  // fetchArrivals와 fetchDepartures 함수는 전체 데이터 로드 방식으로 대체되었습니다.
 
   const selectLocation = (type) => {
     setLocationSelectType(type);
     setShowLocationModal(true);
-    if (type === 'departure') {
-      setAvailableDepartures(null);
-    } else {
-      setAvailableArrivals(null);
-    }
   };
 
   const setLocation = (location) => {
@@ -1437,10 +1412,6 @@ const HomePage = () => {
       [locationSelectType]: location
     }));
     setShowLocationModal(false);
-
-    if (locationSelectType === 'departure') {
-      setAvailableArrivals(null);
-    }
 
     // 선택 완료 후 자동으로 경로 검색
     if (locationSelectType === 'arrival' && bookingData.departure) {
@@ -1852,8 +1823,9 @@ const HomePage = () => {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4">
-              {(availableDepartures === null && locationSelectType === 'departure') || 
-               (availableArrivals === null && locationSelectType === 'arrival') ? (
+              {(loadingAllRoutes &&
+                ((locationSelectType === 'departure' && uniqueDepartures.length === 0) ||
+                  (locationSelectType === 'arrival' && bookingData.departure && filteredArrivals.length === 0))) ? (
                 <Loading text="위치 정보를 불러오는 중..." />
               ) : (
                 <>
