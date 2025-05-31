@@ -224,7 +224,7 @@ router.get('/departures', async (req, res) => {
 
     const filter = { is_active: true };
 
-    if (region) {
+    if (region && region !== 'undefined') {
       filter.region = region.toUpperCase();
     }
 
@@ -264,7 +264,7 @@ router.get('/arrivals', async (req, res) => {
   try {
     const { departure, region, lang = 'kor' } = req.query;
 
-    if (!departure) {
+    if (!departure || departure === 'undefined') {
       return res.status(400).json({
         success: false,
         message: '출발지를 입력해주세요.'
@@ -273,7 +273,7 @@ router.get('/arrivals', async (req, res) => {
 
     const filter = { is_active: true };
 
-    if (region) {
+    if (region && region !== 'undefined') {
       filter.region = region.toUpperCase();
     }
 

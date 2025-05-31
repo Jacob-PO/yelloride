@@ -112,17 +112,25 @@ class YellorideAPI {
   }
 
   async searchRoute(departure, arrival, lang = 'kor') {
-    const params = new URLSearchParams({ departure, arrival, lang });
+    const paramsObj = { lang };
+    if (departure) paramsObj.departure = departure;
+    if (arrival) paramsObj.arrival = arrival;
+    const params = new URLSearchParams(paramsObj).toString();
     return this.requestWithRetry(`/taxi/route?${params}`);
   }
 
   async getArrivals(departure, region, lang = 'kor') {
-    const params = new URLSearchParams({ departure, region, lang });
+    const paramsObj = { lang };
+    if (departure) paramsObj.departure = departure;
+    if (region) paramsObj.region = region;
+    const params = new URLSearchParams(paramsObj).toString();
     return this.requestWithRetry(`/taxi/arrivals?${params}`);
   }
 
   async getDepartures(region, lang = 'kor') {
-    const params = new URLSearchParams({ region, lang });
+    const paramsObj = { lang };
+    if (region) paramsObj.region = region;
+    const params = new URLSearchParams(paramsObj).toString();
     return this.requestWithRetry(`/taxi/departures?${params}`);
   }
 
