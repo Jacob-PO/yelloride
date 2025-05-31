@@ -228,14 +228,27 @@ router.get('/departures', async (req, res) => {
       filter.region = region.toUpperCase();
     }
 
-    const field = lang === 'eng' ? 'departure_eng' : 'departure_kor';
-    let departures = await TaxiItem.find(filter).distinct(field);
-    departures = departures.sort();
+  const records = await TaxiItem.find(filter)
+    .select('departure_kor departure_eng departure_is_airport -_id')
+    .sort({ departure_kor: 1 });
 
-    res.json({
-      success: true,
-      data: departures
-    });
+  const map = new Map();
+  for (const r of records) {
+    if (!map.has(r.departure_kor)) {
+      map.set(r.departure_kor, {
+        name_kor: r.departure_kor,
+        name_eng: r.departure_eng,
+        is_airport: r.departure_is_airport
+      });
+    }
+  }
+
+  const departures = Array.from(map.values());
+
+  res.json({
+    success: true,
+    data: departures
+  });
   } catch (error) {
     console.error('출발지 조회 오류:', error);
     res.status(500).json({
@@ -270,14 +283,27 @@ router.get('/arrivals', async (req, res) => {
       filter.departure_kor = departure;
     }
 
-    const field = lang === 'eng' ? 'arrival_eng' : 'arrival_kor';
-    let arrivals = await TaxiItem.find(filter).distinct(field);
-    arrivals = arrivals.sort();
+  const records = await TaxiItem.find(filter)
+    .select('arrival_kor arrival_eng arrival_is_airport -_id')
+    .sort({ arrival_kor: 1 });
 
-    res.json({
-      success: true,
-      data: arrivals
-    });
+  const map = new Map();
+  for (const r of records) {
+    if (!map.has(r.arrival_kor)) {
+      map.set(r.arrival_kor, {
+        name_kor: r.arrival_kor,
+        name_eng: r.arrival_eng,
+        is_airport: r.arrival_is_airport
+      });
+    }
+  }
+
+  const arrivals = Array.from(map.values());
+
+  res.json({
+    success: true,
+    data: arrivals
+  });
   } catch (error) {
     console.error('도착지 조회 오류:', error);
     res.status(500).json({
