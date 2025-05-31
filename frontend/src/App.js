@@ -1419,7 +1419,7 @@ const BookingPage = () => {
     return total;
   };
 
-  const validateStep = (step, updateErrors = true) => {
+  function validateStep(step, updateErrors = true) {
     const newErrors = {};
     
     switch (step) {
@@ -1473,7 +1473,7 @@ const BookingPage = () => {
       setErrors(newErrors);
     }
     return Object.keys(newErrors).length === 0;
-  };
+  }
 
   const updateBookingData = (field, value) => {
     setBookingData(prev => ({
