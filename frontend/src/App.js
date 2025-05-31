@@ -122,6 +122,11 @@ class YellorideAPI {
     return this.requestWithRetry(`/taxi/arrivals?${params}`);
   }
 
+  async getDepartures(region, lang = 'kor') {
+    const params = new URLSearchParams({ region, lang });
+    return this.requestWithRetry(`/taxi/departures?${params}`);
+  }
+
   async getStats() {
     return this.requestWithRetry('/taxi/stats');
   }
@@ -1233,20 +1238,29 @@ const HomePage = () => {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationSelectType, setLocationSelectType] = useState('departure');
   const [availableArrivals, setAvailableArrivals] = useState(null);
+  const [availableDepartures, setAvailableDepartures] = useState(null);
   const [searchResults, setSearchResults] = useState([]);
   const [popularRoutes, setPopularRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const currentRegionData = regionData[selectedRegion];
-  const airportsList = (currentRegionData?.airports || []).filter(
-    (loc) => !availableArrivals || availableArrivals.includes(loc.name_kor)
-  );
-  const placesList = (currentRegionData?.places || []).filter(
-    (loc) => !availableArrivals || availableArrivals.includes(loc.name_kor)
-  );
+  const airportsList = (currentRegionData?.airports || []).filter((loc) => {
+    if (locationSelectType === 'departure') {
+      return !availableDepartures || availableDepartures.includes(loc.name_kor);
+    }
+    return !availableArrivals || availableArrivals.includes(loc.name_kor);
+  });
+  const placesList = (currentRegionData?.places || []).filter((loc) => {
+    if (locationSelectType === 'departure') {
+      return !availableDepartures || availableDepartures.includes(loc.name_kor);
+    }
+    return !availableArrivals || availableArrivals.includes(loc.name_kor);
+  });
 
   useEffect(() => {
     loadPopularRoutes();
+    setAvailableDepartures(null);
+    setAvailableArrivals(null);
   }, [selectedRegion]);
 
   useEffect(() => {
@@ -1254,6 +1268,12 @@ const HomePage = () => {
       fetchArrivals();
     }
   }, [showLocationModal, locationSelectType, bookingData.departure]);
+
+  useEffect(() => {
+    if (showLocationModal && locationSelectType === 'departure') {
+      fetchDepartures();
+    }
+  }, [showLocationModal, locationSelectType, selectedRegion]);
 
   const loadPopularRoutes = async () => {
     try {
@@ -1292,9 +1312,32 @@ const HomePage = () => {
     }
   };
 
+  const fetchDepartures = async () => {
+    try {
+      const response = await api.getDepartures(
+        selectedRegion,
+        'kor'
+      );
+
+      if (response.success && Array.isArray(response.data)) {
+        setAvailableDepartures(response.data);
+      } else {
+        setAvailableDepartures([]);
+      }
+    } catch (error) {
+      console.error('출발지 목록 로드 오류:', error);
+      setAvailableDepartures([]);
+    }
+  };
+
   const selectLocation = (type) => {
     setLocationSelectType(type);
     setShowLocationModal(true);
+    if (type === 'departure') {
+      setAvailableDepartures(null);
+    } else {
+      setAvailableArrivals(null);
+    }
   };
 
   const setLocation = (location) => {
