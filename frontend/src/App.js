@@ -494,7 +494,7 @@ class ErrorBoundary extends React.Component {
               예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
             
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
               <details className="text-left mb-4 p-3 bg-gray-100 rounded text-sm">
                 <summary className="cursor-pointer font-semibold">개발자 정보</summary>
                 <pre className="mt-2 overflow-auto">
