@@ -1529,20 +1529,7 @@ const HomePage = () => {
               ))}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {['JFK → 맨해튼', '맨해튼 → JFK', 'LGA → 플러싱', '플러싱 → JFK'].map((route) => (
-                <button
-                  key={route}
-                  className="bg-gray-100 hover:bg-blue-100 hover:border-blue-300 border border-gray-200 rounded-full px-4 py-2 text-sm font-medium transition-colors"
-                  onClick={() => {
-                    const [dep, arr] = route.split(' → ');
-                    setBookingData(prev => ({ ...prev, departure: dep, arrival: arr }));
-                  }}
-                >
-                  {route}
-                </button>
-              ))}
-            </div>
+            <p className="text-sm text-gray-500">인기 노선이 없습니다.</p>
           )}
         </Card>
 

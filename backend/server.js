@@ -4,17 +4,39 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const { errorHandler } = require('./utils/errorHandler');
+const TaxiItem = require('./models/TaxiItem');
 
 // Express 앱 초기화
 const app = express();
 // Disable etag headers on responses to prevent 304 status issues
 app.disable('etag');
 
-// 데이터베이스 연결
-connectDB();
+async function seedTaxiDataIfEmpty() {
+  try {
+    const count = await TaxiItem.countDocuments();
+    if (count === 0) {
+      const dataPath = path.join(__dirname, 'data', 'taxiitems_full.json');
+      if (fs.existsSync(dataPath)) {
+        const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+        await TaxiItem.insertMany(data);
+        console.log(`Seeded ${data.length} taxi routes`);
+      } else {
+        console.log('Taxi seed file not found:', dataPath);
+      }
+    }
+  } catch (err) {
+    console.error('Taxi seed error:', err);
+  }
+}
+
+async function startServer() {
+  await connectDB();
+  await seedTaxiDataIfEmpty();
+
 
 // 보안 미들웨어
 app.use(helmet());
@@ -79,15 +101,18 @@ app.use((req, res) => {
 // 에러 핸들러
 app.use(errorHandler);
 
-// 서버 시작
-const PORT = process.env.PORT || 5001;
-const server = app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  console.log(`Server is running on port ${PORT}`);
-});
+  // 서버 시작
+  const PORT = process.env.PORT || 5001;
+  const server = app.listen(PORT, () => {
+    logger.info(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
+  });
 
-// 프로세스 종료 처리
-process.on('unhandledRejection', (err) => {
-  logger.error('Unhandled Rejection:', { error: err.message });
-  server.close(() => process.exit(1));
-});
+  // 프로세스 종료 처리
+  process.on('unhandledRejection', (err) => {
+    logger.error('Unhandled Rejection:', { error: err.message });
+    server.close(() => process.exit(1));
+  });
+}
+
+startServer();
