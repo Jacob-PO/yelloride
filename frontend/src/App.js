@@ -1749,8 +1749,8 @@ const HomePage = () => {
                 {selectedRegion}
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">{currentRegionData.name}</h3>
-                <p className="text-sm text-gray-600">{currentRegionData.desc}</p>
+                <h3 className="font-semibold text-gray-900">{currentRegionData?.name}</h3>
+                <p className="text-sm text-gray-600">{currentRegionData?.desc}</p>
               </div>
             </div>
             <span className="text-gray-400">›</span>
@@ -2040,7 +2040,7 @@ const HomePage = () => {
                   공항
                 </h4>
                 <div className="space-y-2">
-                  {currentRegionData.airports.map((location, index) => (
+                  {(currentRegionData?.airports || []).map((location, index) => (
                     <button
                       key={index}
                       className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2060,7 +2060,7 @@ const HomePage = () => {
                   일반 지역
                 </h4>
                 <div className="space-y-2">
-                  {currentRegionData.places.map((location, index) => (
+                  {(currentRegionData?.places || []).map((location, index) => (
                     <button
                       key={index}
                       className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -3155,7 +3155,7 @@ const CharterPage = () => {
             <div>
               <h4 className="font-medium mb-3">대기 장소</h4>
               <div className="space-y-2">
-                {regionData[selectedRegion]?.places?.slice(0, 4).map((location, index) => (
+                {(regionData[selectedRegion]?.places || []).slice(0, 4).map((location, index) => (
                   <div
                     key={index}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
