@@ -91,6 +91,7 @@ router.get('/', async (req, res) => {
       region,
       departure_is_airport,
       arrival_is_airport,
+      priceOnly,
       search,
       page = 1,
       limit = 50,
@@ -112,6 +113,10 @@ router.get('/', async (req, res) => {
       filter.arrival_is_airport = arrival_is_airport;
     }
     
+    if (priceOnly === 'true') {
+      filter.$expr = { $gt: [{ $add: ['$reservation_fee', '$local_payment_fee'] }, 0] };
+    }
+
     if (search) {
       filter.$or = [
         { departure_kor: { $regex: search, $options: 'i' } },

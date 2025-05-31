@@ -435,7 +435,8 @@ const AdminPage = () => {
     region: '',
     search: '',
     departure_is_airport: '',
-    arrival_is_airport: ''
+    arrival_is_airport: '',
+    priceOnly: false
   });
 
   const handleFileUpload = async () => {
@@ -492,7 +493,7 @@ const AdminPage = () => {
       
       // 빈 필터 제거
       Object.keys(params).forEach(key => {
-        if (params[key] === '') {
+        if (params[key] === '' || params[key] === false) {
           delete params[key];
         }
       });
@@ -587,7 +588,8 @@ const AdminPage = () => {
       region: '',
       search: '',
       departure_is_airport: '',
-      arrival_is_airport: ''
+      arrival_is_airport: '',
+      priceOnly: false
     });
     setPagination(prev => ({ ...prev, page: 1 }));
   };
@@ -660,7 +662,7 @@ const AdminPage = () => {
             {/* 필터 섹션 */}
             <Card className="p-6">
               <h4 className="font-semibold mb-4">필터 및 검색</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
                   <select
@@ -710,6 +712,17 @@ const AdminPage = () => {
                     onChange={(e) => handleFilterChange('search', e.target.value)}
                     className="w-full p-2 border border-gray-300 rounded-lg"
                   />
+                </div>
+
+                <div className="flex items-center mt-6 md:mt-0">
+                  <input
+                    id="priceOnly"
+                    type="checkbox"
+                    checked={filters.priceOnly}
+                    onChange={(e) => handleFilterChange('priceOnly', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label htmlFor="priceOnly" className="text-sm font-medium text-gray-700">가격 있음</label>
                 </div>
               </div>
               
