@@ -10,6 +10,8 @@ const { errorHandler } = require('./utils/errorHandler');
 
 // Express 앱 초기화
 const app = express();
+// Disable etag headers on responses to prevent 304 status issues
+app.disable('etag');
 
 // 데이터베이스 연결
 connectDB();
@@ -26,6 +28,11 @@ app.use(cors({
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Prevent caching for API responses
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // HTTP 로깅
 app.use(logger.httpLogger());
