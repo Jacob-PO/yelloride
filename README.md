@@ -132,7 +132,7 @@ npm run seed:taxi   # 택시 데이터만 생성
 npm run import:json -- --clear   # JSON 파일로 모든 택시 노선 갱신
 ```
 
-백엔드 서버를 처음 실행하면 데이터베이스에 노선이 없는 경우 `backend/data/taxiitems_full.json` 파일을 읽어 `taxi_item` 컬렉션에 자동으로 데이터를 채워 넣습니다.
+초기 택시 노선 데이터는 MongoDB에 직접 임포트해야 합니다. 필요 시 `npm run import:json -- --clear` 명령을 사용해 `backend/data/taxiitems_full.json` 파일의 내용을 컬렉션에 삽입할 수 있습니다.
 
 ### 프로덕션 빌드
 ```bash
