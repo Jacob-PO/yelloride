@@ -1314,6 +1314,14 @@ const HomePage = () => {
   const [allRoutes, setAllRoutes] = useState([]);
   const [loadingAllRoutes, setLoadingAllRoutes] = useState(false);
 
+  // 지역 코드와 영문 표기를 제거한 한글 이름 반환
+  const formatKorName = (full) => {
+    if (!full) return '';
+    return full
+      .replace(/^\w+\s+/, '') // 앞의 지역 코드 제거
+      .split(' - ')[0];        // 영문 표기 제거
+  };
+
   const currentRegionData = regionData[selectedRegion] || { airports: [], places: [] };
 
   const computeLocationLists = () => {
@@ -1340,14 +1348,33 @@ const HomePage = () => {
     loadAllRoutes();
   }, []);
 
+  // 선택된 지역에 따라 출발지 목록 필터링
+  useEffect(() => {
+    const map = new Map();
+    allRoutes.forEach(r => {
+      if (r.region === selectedRegion) {
+        if (!map.has(r.departure_kor)) {
+          map.set(r.departure_kor, {
+            full_kor: r.departure_kor,
+            name_kor: formatKorName(r.departure_kor),
+            name_eng: r.departure_eng,
+            is_airport: r.departure_is_airport,
+          });
+        }
+      }
+    });
+    setUniqueDepartures(Array.from(map.values()));
+  }, [selectedRegion, allRoutes]);
+
   useEffect(() => {
     if (bookingData.departure) {
       const map = new Map();
       allRoutes.forEach(r => {
-        if (r.departure_kor === bookingData.departure) {
+        if (r.region === selectedRegion && r.departure_kor === bookingData.departure) {
           if (!map.has(r.arrival_kor)) {
             map.set(r.arrival_kor, {
-              name_kor: r.arrival_kor,
+              full_kor: r.arrival_kor,
+              name_kor: formatKorName(r.arrival_kor),
               name_eng: r.arrival_eng,
               is_airport: r.arrival_is_airport,
             });
@@ -1358,7 +1385,7 @@ const HomePage = () => {
     } else {
       setFilteredArrivals([]);
     }
-  }, [bookingData.departure, allRoutes]);
+  }, [bookingData.departure, selectedRegion, allRoutes]);
 
   const loadPopularRoutes = async () => {
     try {
@@ -1384,20 +1411,8 @@ const HomePage = () => {
       const response = await api.getAllTaxiItems();
       if (response.success && Array.isArray(response.data)) {
         setAllRoutes(response.data);
-        const map = new Map();
-        response.data.forEach(r => {
-          if (!map.has(r.departure_kor)) {
-            map.set(r.departure_kor, {
-              name_kor: r.departure_kor,
-              name_eng: r.departure_eng,
-              is_airport: r.departure_is_airport,
-            });
-          }
-        });
-        setUniqueDepartures(Array.from(map.values()));
       } else {
         setAllRoutes([]);
-        setUniqueDepartures([]);
       }
     } catch (error) {
       console.error('전체 노선 로드 오류:', error);
@@ -1417,7 +1432,7 @@ const HomePage = () => {
   const setLocation = (location) => {
     setBookingData(prev => ({
       ...prev,
-      [locationSelectType]: location
+      [locationSelectType]: location.full_kor || location.name_kor || location
     }));
     setShowLocationModal(false);
 
@@ -1847,10 +1862,10 @@ const HomePage = () => {
                         <button
                           key={index}
                           className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onClick={() => setLocation(location.name_kor || location)}
+                          onClick={() => setLocation(location)}
                           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
                         >
-                          <div className="font-medium">{location.name_kor || location}</div>
+                          <div className="font-medium">{location.name_kor}</div>
                           <div className="text-sm text-gray-600">{location.name_eng || ''}</div>
                         </button>
                       ))}
@@ -1870,10 +1885,10 @@ const HomePage = () => {
                         <button
                           key={index}
                           className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          onClick={() => setLocation(location.name_kor || location)}
+                          onClick={() => setLocation(location)}
                           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
                         >
-                          <div className="font-medium">{location.name_kor || location}</div>
+                          <div className="font-medium">{location.name_kor}</div>
                           <div className="text-sm text-gray-600">{location.name_eng || ''}</div>
                         </button>
                       ))}
