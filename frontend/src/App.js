@@ -1,17 +1,16 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Calendar, Phone, MapPin, Users, Luggage, Car, CheckCircle, ArrowLeft, Search, Plus, Minus, X } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText } from 'lucide-react';
 
 // 전역 상태 관리
 const AppContext = createContext();
 
-
-// 개선된 API 서비스 클래스 (최종 버전)
+// API 서비스 클래스
 class YellorideAPI {
   constructor() {
     this.baseURL = process.env.NODE_ENV === 'production' 
       ? 'https://api.yelloride.com/api' 
       : 'http://localhost:5001/api';
-    this.timeout = 30000; // 30초 타임아웃
+    this.timeout = 30000;
   }
 
   async request(endpoint, options = {}) {
@@ -27,7 +26,6 @@ class YellorideAPI {
       ...options
     };
 
-    // 타임아웃 처리
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('요청 시간이 초과되었습니다.')), this.timeout)
     );
@@ -38,11 +36,9 @@ class YellorideAPI {
         timeoutPromise
       ]);
       
-      // 네트워크 오류 체크
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         
-        // 상태 코드별 에러 처리
         switch (response.status) {
           case 400:
             throw new Error(errorData.message || '잘못된 요청입니다.');
@@ -64,23 +60,19 @@ class YellorideAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      // 네트워크 연결 오류
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.');
       }
       
-      // 타임아웃 오류
       if (error.message.includes('시간이 초과')) {
         throw new Error('서버 응답이 지연되고 있습니다. 다시 시도해주세요.');
       }
       
-      // 기타 오류
       console.error('API 요청 오류:', error);
       throw error;
     }
   }
 
-  // 재시도 로직이 포함된 요청
   async requestWithRetry(endpoint, options = {}, maxRetries = 3) {
     let lastError;
     
@@ -90,13 +82,11 @@ class YellorideAPI {
       } catch (error) {
         lastError = error;
         
-        // 재시도하지 않을 오류들
         if (error.message.includes('400') || error.message.includes('401') || 
             error.message.includes('403') || error.message.includes('404')) {
           throw error;
         }
         
-        // 마지막 시도가 아니면 잠시 대기 후 재시도
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
         }
@@ -106,7 +96,7 @@ class YellorideAPI {
     throw lastError;
   }
 
-  // 택시 노선 관련 API
+  // 택시 노선 API
   async getTaxiItems(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.requestWithRetry(`/taxi?${queryString}`);
@@ -131,7 +121,7 @@ class YellorideAPI {
     return this.requestWithRetry('/taxi/stats');
   }
 
-  // 예약 관련 API
+  // 예약 API
   async createBooking(bookingData) {
     return this.requestWithRetry('/bookings', {
       method: 'POST',
@@ -157,7 +147,6 @@ class YellorideAPI {
     });
   }
 
-  // 헬스 체크
   async healthCheck() {
     try {
       const response = await fetch(`${this.baseURL}/health`, { 
@@ -170,7 +159,6 @@ class YellorideAPI {
     }
   }
 
-  // 피드백 전송
   async sendFeedback(feedbackData) {
     return this.requestWithRetry('/feedback', {
       method: 'POST',
@@ -178,6 +166,8 @@ class YellorideAPI {
     });
   }
 }
+
+// 토스트 컴포넌트
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -187,18 +177,33 @@ const Toast = ({ message, type, onClose }) => {
   }, [onClose]);
 
   const typeStyles = {
-    success: 'bg-green-500 text-white',
-    error: 'bg-red-500 text-white',
-    warning: 'bg-yellow-500 text-black',
-    info: 'bg-blue-500 text-white'
+    success: 'bg-green-100 text-green-800 border-green-200',
+    error: 'bg-red-100 text-red-800 border-red-200',
+    warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    info: 'bg-blue-100 text-blue-800 border-blue-200'
+  };
+
+  const icons = {
+    success: <CheckCircle className="w-5 h-5" />,
+    error: <X className="w-5 h-5" />,
+    warning: <Info className="w-5 h-5" />,
+    info: <Info className="w-5 h-5" />
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${typeStyles[type]} max-w-sm animate-pulse`}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">{message}</span>
-        <button onClick={onClose} className="ml-3 text-lg font-bold opacity-70 hover:opacity-100">
-          ×
+    <div className={`fixed bottom-20 left-4 right-4 max-w-sm mx-auto z-50 p-4 rounded-2xl border ${typeStyles[type]} shadow-lg backdrop-blur-sm transition-all duration-300 animate-slideIn`}>
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">
+          {icons[type]}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium">{message}</p>
+        </div>
+        <button 
+          onClick={onClose} 
+          className="flex-shrink-0 ml-2 text-current opacity-60 hover:opacity-100 transition-opacity"
+        >
+          <X className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -234,7 +239,7 @@ const useToast = () => {
   return { showToast, ToastContainer };
 };
 
-// 오프라인 감지 훅
+// 온라인 상태 훅
 const useOnlineStatus = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -254,122 +259,7 @@ const useOnlineStatus = () => {
   return isOnline;
 };
 
-const Button = ({ children, variant = 'primary', size = 'md', disabled = false, loading = false, onClick, className = '', ...props }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed';
-  
-  const variants = {
-    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500 disabled:bg-gray-300 disabled:text-gray-500',
-    secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 disabled:bg-gray-100 disabled:text-gray-400',
-    success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-500 disabled:bg-gray-300',
-    yellow: 'bg-yellow-400 text-black hover:bg-yellow-500 focus:ring-yellow-400 disabled:bg-gray-300',
-    outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-blue-500 disabled:border-gray-200 disabled:text-gray-400',
-    danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 disabled:bg-gray-300'
-  };
-  
-  const sizes = {
-    sm: 'px-3 py-2 text-sm',
-    md: 'px-4 py-3 text-base',
-    lg: 'px-6 py-4 text-lg'
-  };
-
-  const isDisabled = disabled || loading;
-
-  return (
-    <button
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className} ${isDisabled ? 'opacity-50' : ''}`}
-      disabled={isDisabled}
-      onClick={onClick}
-      {...props}
-    >
-      {loading && (
-        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
-      )}
-      {children}
-    </button>
-  );
-};
-
-const Input = ({ label, icon: Icon, error, loading = false, className = '', ...props }) => {
-  return (
-    <div className={`mb-4 ${className}`}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {label}
-        </label>
-      )}
-      <div className="relative">
-        {Icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icon className={`h-5 w-5 ${loading ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
-          </div>
-        )}
-        <input
-          className={`block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${Icon ? 'pl-10' : 'pl-3'} pr-3 py-3 text-base transition-colors ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''} ${loading ? 'bg-gray-50' : ''}`}
-          disabled={loading}
-          {...props}
-        />
-        {loading && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
-      </div>
-      {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
-    </div>
-  );
-};
-
-const Card = ({ children, className = '', onClick, loading = false }) => {
-  return (
-    <div 
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${loading ? 'opacity-50 pointer-events-none' : ''} ${className}`}
-      onClick={loading ? undefined : onClick}
-    >
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-xl">
-          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      )}
-      {children}
-    </div>
-  );
-};
-
-const Loading = ({ text = '로딩 중...', size = 'md' }) => {
-  const sizes = {
-    sm: { spinner: 'w-4 h-4', text: 'text-sm', container: 'py-4' },
-    md: { spinner: 'w-8 h-8', text: 'text-base', container: 'py-8' },
-    lg: { spinner: 'w-12 h-12', text: 'text-lg', container: 'py-12' }
-  };
-
-  const currentSize = sizes[size];
-
-  return (
-    <div className={`flex flex-col items-center justify-center ${currentSize.container}`}>
-      <div className={`animate-spin rounded-full ${currentSize.spinner} border-b-2 border-blue-500 mb-4`}></div>
-      <p className={`text-gray-600 ${currentSize.text}`}>{text}</p>
-    </div>
-  );
-};
-
-
-// 빈 상태 컴포넌트
-const EmptyState = ({ title, message, action, icon = '📭' }) => {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="text-4xl mb-4 opacity-50">{icon}</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      {message && (
-        <p className="text-gray-600 mb-4 max-w-md">{message}</p>
-      )}
-      {action}
-    </div>
-  );
-};
-
-// 연결 상태 표시 컴포넌트
+// 연결 상태 표시
 const ConnectionStatus = () => {
   const isOnline = useOnlineStatus();
   const [serverStatus, setServerStatus] = useState(true);
@@ -382,28 +272,1479 @@ const ConnectionStatus = () => {
     };
 
     checkServerStatus();
-    const interval = setInterval(checkServerStatus, 30000); // 30초마다 체크
+    const interval = setInterval(checkServerStatus, 30000);
 
     return () => clearInterval(interval);
   }, []);
 
   if (!isOnline) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 bg-red-500 text-white p-3 rounded-lg text-center text-sm font-medium z-50">
-        🔴 인터넷 연결이 끊어졌습니다
+      <div className="fixed bottom-4 left-4 right-4 bg-gray-900 text-white p-4 rounded-2xl text-center text-sm font-medium z-50 shadow-lg max-w-sm mx-auto">
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+          인터넷 연결이 끊어졌습니다
+        </div>
       </div>
     );
   }
 
   if (!serverStatus) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 bg-yellow-500 text-black p-3 rounded-lg text-center text-sm font-medium z-50">
-        ⚠️ 서버 연결이 불안정합니다
+      <div className="fixed bottom-4 left-4 right-4 bg-yellow-50 text-yellow-800 border border-yellow-200 p-4 rounded-2xl text-center text-sm font-medium z-50 shadow-lg max-w-sm mx-auto">
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+          서버 연결이 불안정합니다
+        </div>
       </div>
     );
   }
 
   return null;
+};
+
+// 메인 앱
+const YellorideApp = () => {
+  const [currentPage, setCurrentPage] = useState('regionSelect');
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const { showToast, ToastContainer } = useToast();
+  const [bookingData, setBookingData] = useState({
+    departure: null,
+    arrival: null,
+    region: null,
+    serviceType: null,
+    step: 1,
+    datetime: {
+      date: '',
+      time: '12:00'
+    },
+    passengers: 1,
+    luggage: 0,
+    vehicle: 'standard',
+    customer: {
+      name: '',
+      phone: '',
+      email: '',
+      kakao: ''
+    },
+    flight: {
+      number: '',
+      terminal: ''
+    },
+    bookingNumber: '',
+    totalAmount: 0
+  });
+
+  const api = new YellorideAPI();
+
+  const contextValue = {
+    currentPage, setCurrentPage,
+    selectedRegion, setSelectedRegion,
+    bookingData, setBookingData,
+    api,
+    showToast
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      <div className="min-h-screen bg-gray-50">
+        <style jsx global>{`
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+          
+          button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-family: inherit;
+          }
+          
+          input {
+            font-family: inherit;
+          }
+
+          @keyframes slideIn {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
+          }
+          
+          .animate-slideIn {
+            animation: slideIn 0.3s ease-out;
+          }
+          
+          .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+          }
+        `}</style>
+
+        {currentPage === 'regionSelect' && <RegionSelectPage />}
+        {currentPage === 'home' && <HomePage />}
+        {currentPage === 'booking' && <BookingPage />}
+        {currentPage === 'charter' && <CharterPage />}
+        {currentPage === 'search' && <SearchPage />}
+        {currentPage === 'confirmation' && <ConfirmationPage />}
+        {currentPage === 'admin' && <AdminPage />}
+        
+        <ToastContainer />
+        <ConnectionStatus />
+      </div>
+    </AppContext.Provider>
+  );
+};
+
+// 지역 선택 페이지 (뉴욕/LA 선택)
+const RegionSelectPage = () => {
+  const { setCurrentPage, setSelectedRegion, setBookingData } = useContext(AppContext);
+
+  const handleRegionSelect = (region) => {
+    setSelectedRegion(region);
+    setBookingData(prev => ({ ...prev, region }));
+    localStorage.setItem('selectedRegion', region);
+    setCurrentPage('home');
+  };
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-12">
+          <h1 className="text-3xl font-bold mb-3">YELLORIDE</h1>
+          <p className="text-gray-600">서비스 지역을 선택해주세요</p>
+        </div>
+
+        <div className="space-y-4">
+          <button
+            onClick={() => handleRegionSelect('NY')}
+            className="w-full p-6 bg-white rounded-2xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-blue-200 transition-colors">
+                  🗽
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl mb-1">뉴욕</h3>
+                  <p className="text-gray-500 text-sm">맨해튼, 브루클린, JFK/LGA 공항</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleRegionSelect('CA')}
+            className="w-full p-6 bg-white rounded-2xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-yellow-200 transition-colors">
+                  🌴
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl mb-1">로스앤젤레스</h3>
+                  <p className="text-gray-500 text-sm">LA, 샌프란시스코, LAX/SFO 공항</p>
+                </div>
+              </div>
+              <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
+            </div>
+          </button>
+        </div>
+
+        <div className="mt-12 text-center text-sm text-gray-500">
+          더 많은 지역이 곧 추가됩니다
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 홈페이지
+const HomePage = () => {
+  const { setCurrentPage, selectedRegion, bookingData, setBookingData, api, showToast } = useContext(AppContext);
+  const [selectedService, setSelectedService] = useState(null);
+  const [popularRoutes, setPopularRoutes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadPopularRoutes();
+  }, [selectedRegion]);
+
+  const loadPopularRoutes = async () => {
+    try {
+      const response = await api.getTaxiItems({
+        region: selectedRegion,
+        limit: 6,
+        sort: 'priority'
+      });
+      
+      if (response.success && Array.isArray(response.data)) {
+        setPopularRoutes(response.data);
+      }
+    } catch (error) {
+      console.error('인기 노선 로드 오류:', error);
+    }
+  };
+
+  const handleServiceSelect = (service) => {
+    setSelectedService(service);
+    setBookingData(prev => ({ ...prev, serviceType: service }));
+    setCurrentPage('booking');
+  };
+
+  const quickSelectRoute = (route) => {
+    setBookingData(prev => ({ 
+      ...prev, 
+      departure: route.departure_kor,
+      arrival: route.arrival_kor,
+      serviceType: route.departure_is_airport === 'Y' || route.arrival_is_airport === 'Y' ? 'airport' : 'taxi',
+      priceData: {
+        reservation_fee: route.reservation_fee,
+        local_payment_fee: route.local_payment_fee
+      }
+    }));
+    setCurrentPage('booking');
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* 상단 헤더 */}
+      <header className="bg-white p-4 sticky top-0 z-50 border-b border-gray-100">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <h1 className="text-xl font-bold">
+            {selectedRegion === 'NY' ? '뉴욕' : '로스앤젤레스'}
+          </h1>
+          <button
+            onClick={() => setCurrentPage('regionSelect')}
+            className="text-sm text-gray-600 flex items-center gap-1"
+          >
+            지역변경
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      <div className="p-4 max-w-md mx-auto">
+        <h2 className="text-2xl font-bold mb-2">어디로 모실까요?</h2>
+        <p className="text-gray-600 mb-6">원하는 서비스를 선택해주세요</p>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => handleServiceSelect('airport')}
+            className="w-full p-5 bg-white rounded-2xl border-2 border-gray-100 hover:border-blue-500 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Plane className="w-7 h-7 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">공항 갈 때</h3>
+                  <p className="text-gray-500 text-sm">비행기 놓치면 곤란하니까</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleServiceSelect('taxi')}
+            className="w-full p-5 bg-white rounded-2xl border-2 border-gray-100 hover:border-blue-500 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-yellow-100 rounded-xl flex items-center justify-center">
+                  <Car className="w-7 h-7 text-yellow-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">일반 택시</h3>
+                  <p className="text-gray-500 text-sm">어디든 편하게</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => setCurrentPage('charter')}
+            className="w-full p-5 bg-white rounded-2xl border-2 border-gray-100 hover:border-blue-500 transition-all text-left"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Clock className="w-7 h-7 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">시간제 대절</h3>
+                  <p className="text-gray-500 text-sm">여유있게 다니고 싶을 때</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </button>
+        </div>
+
+        {/* 인기 노선 */}
+        {popularRoutes.length > 0 && (
+          <div className="mt-8">
+            <h3 className="font-semibold text-lg mb-4">인기 노선</h3>
+            <div className="space-y-2">
+              {popularRoutes.slice(0, 4).map((route, index) => (
+                <button
+                  key={index}
+                  onClick={() => quickSelectRoute(route)}
+                  className="w-full p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {(route.departure_is_airport === 'Y' || route.arrival_is_airport === 'Y') && 
+                        <Plane className="w-4 h-4 text-blue-500" />
+                      }
+                      <div>
+                        <div className="font-medium text-sm">
+                          {route.departure_kor.split(' - ')[0]} → {route.arrival_kor.split(' - ')[0]}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          예약비 ${route.reservation_fee} + 현지비 ${route.local_payment_fee}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-blue-600">
+                        ${route.reservation_fee + route.local_payment_fee}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 하단 네비게이션 */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="max-w-md mx-auto flex">
+          <button className="flex-1 py-4 text-center">
+            <div className="text-2xl mb-1">🏠</div>
+            <div className="text-xs font-medium text-gray-900">홈</div>
+          </button>
+          <button className="flex-1 py-4 text-center" onClick={() => setCurrentPage('search')}>
+            <div className="text-2xl mb-1 opacity-40">📋</div>
+            <div className="text-xs text-gray-400">예약내역</div>
+          </button>
+          <button className="flex-1 py-4 text-center">
+            <div className="text-2xl mb-1 opacity-40">💬</div>
+            <div className="text-xs text-gray-400">고객센터</div>
+          </button>
+          <button className="flex-1 py-4 text-center" onClick={() => setCurrentPage('admin')}>
+            <div className="text-2xl mb-1 opacity-40">⚙️</div>
+            <div className="text-xs text-gray-400">관리</div>
+          </button>
+        </div>
+      </nav>
+    </div>
+  );
+};
+
+// 예약 페이지
+const BookingPage = () => {
+  const { setCurrentPage, bookingData, setBookingData, api, showToast, selectedRegion } = useContext(AppContext);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState({ departures: [], arrivals: [] });
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationSelectType, setLocationSelectType] = useState('departure');
+  const [priceData, setPriceData] = useState(bookingData.priceData || {
+    reservation_fee: 20,
+    local_payment_fee: 75
+  });
+
+  const totalSteps = 4;
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setBookingData(prev => ({
+      ...prev,
+      datetime: { ...prev.datetime, date: today }
+    }));
+
+    if (!bookingData.departure || !bookingData.arrival) {
+      loadDepartures();
+    }
+  }, []);
+
+  const loadDepartures = async () => {
+    try {
+      const response = await api.getDepartures(selectedRegion, 'kor');
+      if (response.success && Array.isArray(response.data)) {
+        setLocations(prev => ({ ...prev, departures: response.data }));
+      }
+    } catch (error) {
+      console.error('출발지 로드 오류:', error);
+    }
+  };
+
+  const loadArrivals = async (departure) => {
+    try {
+      const response = await api.getArrivals(departure.split(' - ')[0], selectedRegion, 'kor');
+      if (response.success && Array.isArray(response.data)) {
+        setLocations(prev => ({ ...prev, arrivals: response.data }));
+      }
+    } catch (error) {
+      console.error('도착지 로드 오류:', error);
+    }
+  };
+
+  const openLocationSelect = (type) => {
+    setLocationSelectType(type);
+    setShowLocationModal(true);
+    
+    if (type === 'arrival' && bookingData.departure) {
+      loadArrivals(bookingData.departure);
+    }
+  };
+
+  const selectLocation = async (location) => {
+    const locationName = location.name_kor || location;
+    
+    setBookingData(prev => ({
+      ...prev,
+      [locationSelectType]: locationName
+    }));
+    setShowLocationModal(false);
+
+    if (locationSelectType === 'departure') {
+      setLocations(prev => ({ ...prev, arrivals: [] }));
+      setBookingData(prev => ({ ...prev, arrival: null }));
+    }
+
+    // 경로 검색해서 가격 정보 가져오기
+    if (locationSelectType === 'arrival' && bookingData.departure) {
+      try {
+        const response = await api.searchRoute(
+          bookingData.departure.split(' - ')[0],
+          locationName.split(' - ')[0],
+          'kor'
+        );
+        if (response.success && response.data.length > 0) {
+          setPriceData({
+            reservation_fee: response.data[0].reservation_fee,
+            local_payment_fee: response.data[0].local_payment_fee
+          });
+        }
+      } catch (error) {
+        console.error('경로 검색 오류:', error);
+      }
+    }
+  };
+
+  const calculateTotalPrice = () => {
+    let total = priceData.reservation_fee + priceData.local_payment_fee;
+    
+    if (bookingData.vehicle === 'xl') {
+      total += 10;
+    } else if (bookingData.vehicle === 'premium') {
+      total += 25;
+    }
+    
+    return total;
+  };
+
+  const validateStep = (step) => {
+    switch (step) {
+      case 1:
+        return bookingData.departure && bookingData.arrival;
+      case 2:
+        return bookingData.datetime.date && bookingData.datetime.time;
+      case 3:
+        return bookingData.passengers >= 1;
+      case 4:
+        return bookingData.customer.name && bookingData.customer.phone && bookingData.customer.email;
+      default:
+        return false;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep < totalSteps) {
+        setCurrentStep(prev => prev + 1);
+      } else {
+        completeBooking();
+      }
+    } else {
+      showToast('필수 정보를 입력해주세요.', 'warning');
+    }
+  };
+
+  const completeBooking = async () => {
+    setLoading(true);
+    try {
+      const bookingRequest = {
+        customer_info: {
+          name: bookingData.customer.name,
+          phone: bookingData.customer.phone,
+          email: bookingData.customer.email,
+          kakao_id: bookingData.customer.kakao || ''
+        },
+        service_info: {
+          type: bookingData.serviceType,
+          region: selectedRegion
+        },
+        trip_details: {
+          departure: {
+            location: bookingData.departure,
+            datetime: new Date(`${bookingData.datetime.date}T${bookingData.datetime.time}`)
+          },
+          arrival: {
+            location: bookingData.arrival
+          }
+        },
+        vehicles: [{
+          type: bookingData.vehicle,
+          passengers: bookingData.passengers,
+          luggage: bookingData.luggage
+        }],
+        passenger_info: {
+          total_passengers: bookingData.passengers,
+          total_luggage: bookingData.luggage
+        },
+        flight_info: bookingData.flight.number ? {
+          flight_number: bookingData.flight.number,
+          terminal: bookingData.flight.terminal
+        } : null,
+        pricing: {
+          reservation_fee: priceData.reservation_fee,
+          service_fee: priceData.local_payment_fee,
+          vehicle_upgrade_fee: bookingData.vehicle === 'xl' ? 10 : 
+                              bookingData.vehicle === 'premium' ? 25 : 0,
+          total_amount: calculateTotalPrice()
+        }
+      };
+
+      const response = await api.createBooking(bookingRequest);
+      
+      if (response.success) {
+        setBookingData(prev => ({
+          ...prev,
+          bookingNumber: response.data.booking_number,
+          totalAmount: response.data.total_amount
+        }));
+        
+        showToast('예약이 완료되었습니다!', 'success');
+        setCurrentPage('confirmation');
+      } else {
+        throw new Error(response.message || '예약 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      showToast(error.message || '예약 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const progress = (currentStep / totalSteps) * 100;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="flex items-center p-4">
+          <button onClick={() => setCurrentPage('home')} className="p-2">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="ml-4 text-lg font-semibold">예약하기</h1>
+        </div>
+        <div className="px-4 pb-4">
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="bg-blue-500 h-1 rounded-full transition-all"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      </header>
+
+      <div className="p-4 pb-24">
+        {/* Step 1: 경로 선택 */}
+        {currentStep === 1 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold mb-6">어디로 가시나요?</h2>
+            
+            <button
+              onClick={() => openLocationSelect('departure')}
+              className="w-full p-4 bg-white rounded-2xl border-2 border-gray-200 hover:border-blue-500 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 mb-1">출발지</p>
+                  <p className={`font-medium ${bookingData.departure ? 'text-black' : 'text-gray-400'}`}>
+                    {bookingData.departure || '출발지를 선택하세요'}
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <div className="relative">
+              <div className="absolute left-[6px] top-[-8px] bottom-[-8px] w-[2px] bg-gray-300"></div>
+            </div>
+
+            <button
+              onClick={() => openLocationSelect('arrival')}
+              className="w-full p-4 bg-white rounded-2xl border-2 border-gray-200 hover:border-blue-500 transition-all text-left"
+              disabled={!bookingData.departure}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500 mb-1">도착지</p>
+                  <p className={`font-medium ${bookingData.arrival ? 'text-black' : 'text-gray-400'}`}>
+                    {bookingData.arrival || '도착지를 선택하세요'}
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            {bookingData.departure && bookingData.arrival && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">예상 요금</span>
+                  <span className="text-xl font-bold text-blue-600">
+                    ${calculateTotalPrice()}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: 날짜/시간 선택 */}
+        {currentStep === 2 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold mb-6">언제 출발하시나요?</h2>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">날짜</label>
+              <input
+                type="date"
+                value={bookingData.datetime.date}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  datetime: { ...prev.datetime, date: e.target.value }
+                }))}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">시간</label>
+              <input
+                type="time"
+                value={bookingData.datetime.time}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  datetime: { ...prev.datetime, time: e.target.value }
+                }))}
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            {bookingData.serviceType === 'airport' && (
+              <div className="space-y-4 mt-6">
+                <h3 className="font-medium">항공편 정보 (선택)</h3>
+                <input
+                  type="text"
+                  placeholder="항공편 번호"
+                  value={bookingData.flight.number}
+                  onChange={(e) => setBookingData(prev => ({
+                    ...prev,
+                    flight: { ...prev.flight, number: e.target.value }
+                  }))}
+                  className="w-full p-3 border border-gray-300 rounded-xl"
+                />
+                <input
+                  type="text"
+                  placeholder="터미널"
+                  value={bookingData.flight.terminal}
+                  onChange={(e) => setBookingData(prev => ({
+                    ...prev,
+                    flight: { ...prev.flight, terminal: e.target.value }
+                  }))}
+                  className="w-full p-3 border border-gray-300 rounded-xl"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: 인원/차량 선택 */}
+        {currentStep === 3 && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold mb-6">인원과 차량을 선택하세요</h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-white rounded-xl">
+                <div>
+                  <p className="font-medium">탑승 인원</p>
+                  <p className="text-sm text-gray-500">최대 8명</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => bookingData.passengers > 1 && 
+                      setBookingData(prev => ({ ...prev, passengers: prev.passengers - 1 }))}
+                    className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="font-semibold text-lg w-8 text-center">{bookingData.passengers}</span>
+                  <button
+                    onClick={() => setBookingData(prev => ({ ...prev, passengers: prev.passengers + 1 }))}
+                    className="w-8 h-8 rounded-full border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-white rounded-xl">
+                <div>
+                  <p className="font-medium">수하물</p>
+                  <p className="text-sm text-gray-500">캐리어 개수</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => bookingData.luggage > 0 && 
+                      setBookingData(prev => ({ ...prev, luggage: prev.luggage - 1 }))}
+                    className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="font-semibold text-lg w-8 text-center">{bookingData.luggage}</span>
+                  <button
+                    onClick={() => setBookingData(prev => ({ ...prev, luggage: prev.luggage + 1 }))}
+                    className="w-8 h-8 rounded-full border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-medium mb-3">차량 선택</h3>
+              <div className="space-y-3">
+                {[
+                  { id: 'standard', name: '일반 택시', desc: '최대 4명', price: '기본 요금' },
+                  { id: 'xl', name: '대형 택시', desc: '최대 6명', price: '+$10' },
+                  { id: 'premium', name: '프리미엄 택시', desc: '최대 4명', price: '+$25' }
+                ].map((vehicle) => (
+                  <button
+                    key={vehicle.id}
+                    onClick={() => setBookingData(prev => ({ ...prev, vehicle: vehicle.id }))}
+                    className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                      bookingData.vehicle === vehicle.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{vehicle.name}</p>
+                        <p className="text-sm text-gray-500">{vehicle.desc}</p>
+                      </div>
+                      <span className="font-medium text-blue-600">{vehicle.price}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: 연락처 정보 */}
+        {currentStep === 4 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold mb-6">연락처 정보</h2>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">이름 *</label>
+              <input
+                type="text"
+                value={bookingData.customer.name}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, name: e.target.value }
+                }))}
+                placeholder="성함을 입력하세요"
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">전화번호 *</label>
+              <input
+                type="tel"
+                value={bookingData.customer.phone}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, phone: e.target.value }
+                }))}
+                placeholder="010-1234-5678"
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">이메일 *</label>
+              <input
+                type="email"
+                value={bookingData.customer.email}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, email: e.target.value }
+                }))}
+                placeholder="example@email.com"
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">카카오톡 ID (선택)</label>
+              <input
+                type="text"
+                value={bookingData.customer.kakao}
+                onChange={(e) => setBookingData(prev => ({
+                  ...prev,
+                  customer: { ...prev.customer, kakao: e.target.value }
+                }))}
+                placeholder="카카오톡 ID"
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+              <h3 className="font-medium mb-2">최종 요금</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>예약비</span>
+                  <span>${priceData.reservation_fee}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>현지 지불료</span>
+                  <span>${priceData.local_payment_fee}</span>
+                </div>
+                {bookingData.vehicle !== 'standard' && (
+                  <div className="flex justify-between">
+                    <span>차량 업그레이드</span>
+                    <span>${bookingData.vehicle === 'xl' ? 10 : 25}</span>
+                  </div>
+                )}
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between font-bold text-base">
+                    <span>총 요금</span>
+                    <span className="text-blue-600">${calculateTotalPrice()}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 하단 버튼 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex gap-3">
+          {currentStep > 1 && (
+            <button
+              onClick={() => setCurrentStep(prev => prev - 1)}
+              className="flex-1 py-3 px-4 border border-gray-300 rounded-xl font-medium"
+            >
+              이전
+            </button>
+          )}
+          <button
+            onClick={nextStep}
+            disabled={!validateStep(currentStep) || loading}
+            className={`flex-1 py-3 px-4 rounded-xl font-medium text-white transition-all ${
+              validateStep(currentStep) && !loading
+                ? 'bg-blue-500 hover:bg-blue-600' 
+                : 'bg-gray-300'
+            }`}
+          >
+            {loading ? '처리 중...' : currentStep === totalSteps ? '예약 완료' : '다음'}
+          </button>
+        </div>
+      </div>
+
+      {/* 위치 선택 모달 */}
+      {showLocationModal && (
+        <div className="fixed inset-0 bg-white z-50">
+          <header className="bg-white border-b border-gray-200 p-4">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setShowLocationModal(false)}>
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h3 className="text-lg font-semibold">
+                {locationSelectType === 'departure' ? '출발지 선택' : '도착지 선택'}
+              </h3>
+            </div>
+          </header>
+
+          <div className="p-4 overflow-y-auto h-[calc(100vh-73px)]">
+            {locationSelectType === 'departure' ? (
+              <>
+                <div className="mb-6">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Plane className="w-5 h-5 text-gray-600" />
+                    공항
+                  </h4>
+                  <div className="space-y-2">
+                    {locations.departures.filter(loc => loc.is_airport === 'Y').map((location, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => selectLocation(location)}
+                        className="w-full p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-left"
+                      >
+                        <p className="font-medium">{location.name_kor}</p>
+                        <p className="text-sm text-gray-500">{location.name_eng}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-gray-600" />
+                    일반 지역
+                  </h4>
+                  <div className="space-y-2">
+                    {locations.departures.filter(loc => loc.is_airport !== 'Y').map((location, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => selectLocation(location)}
+                        className="w-full p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-left"
+                      >
+                        <p className="font-medium">{location.name_kor}</p>
+                        <p className="text-sm text-gray-500">{location.name_eng}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {locations.arrivals.length > 0 ? (
+                  <>
+                    <div className="mb-6">
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Plane className="w-5 h-5 text-gray-600" />
+                        공항
+                      </h4>
+                      <div className="space-y-2">
+                        {locations.arrivals.filter(loc => loc.is_airport === 'Y').map((location, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => selectLocation(location)}
+                            className="w-full p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-left"
+                          >
+                            <p className="font-medium">{location.name_kor}</p>
+                            <p className="text-sm text-gray-500">{location.name_eng}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Building2 className="w-5 h-5 text-gray-600" />
+                        일반 지역
+                      </h4>
+                      <div className="space-y-2">
+                        {locations.arrivals.filter(loc => loc.is_airport !== 'Y').map((location, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => selectLocation(location)}
+                            className="w-full p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-left"
+                          >
+                            <p className="font-medium">{location.name_kor}</p>
+                            <p className="text-sm text-gray-500">{location.name_eng}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">도착지 목록을 불러오는 중...</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 검색 페이지
+const SearchPage = () => {
+  const { setCurrentPage, api, showToast } = useContext(AppContext);
+  const [searchValue, setSearchValue] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState([]);
+
+  const handleSearch = async () => {
+    if (!searchValue.trim()) {
+      showToast('예약번호를 입력해주세요.', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.getBookingByNumber(searchValue.trim());
+      if (response.success) {
+        setResults([response.data]);
+        showToast('예약을 찾았습니다.', 'success');
+      } else {
+        setResults([]);
+        showToast('예약을 찾을 수 없습니다.', 'warning');
+      }
+    } catch (error) {
+      console.error('검색 오류:', error);
+      showToast('검색 중 오류가 발생했습니다.', 'error');
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="flex items-center p-4">
+          <button onClick={() => setCurrentPage('home')} className="p-2">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="ml-4 text-lg font-semibold">예약 조회</h1>
+        </div>
+      </header>
+
+      <div className="p-4">
+        <div className="bg-white rounded-2xl p-6 mb-4">
+          <h2 className="text-lg font-semibold mb-4">예약번호로 조회</h2>
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder="예약번호를 입력하세요"
+              className="w-full p-3 border border-gray-300 rounded-xl"
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={loading || !searchValue.trim()}
+              className={`w-full py-3 rounded-xl font-medium text-white transition-all ${
+                loading || !searchValue.trim() 
+                  ? 'bg-gray-300' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+            >
+              {loading ? '조회 중...' : '조회하기'}
+            </button>
+          </div>
+        </div>
+
+        {results.length > 0 && (
+          <div className="space-y-4">
+            {results.map((booking, index) => (
+              <div key={index} className="bg-white rounded-2xl p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-semibold">{booking.booking_number}</h3>
+                    <p className="text-sm text-gray-500">{booking.created_at}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    booking.status === 'confirmed' 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {booking.status === 'confirmed' ? '예약 확정' : '대기중'}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Car className="w-4 h-4 text-gray-400" />
+                    <span>{booking.service_type}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span>{booking.departure} → {booking.arrival}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span>{booking.date} {booking.time}</span>
+                  </div>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">총 요금</span>
+                    <span className="font-bold text-lg">${booking.total_amount}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && results.length === 0 && searchValue && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">예약 내역이 없습니다</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// 대절 페이지
+const CharterPage = () => {
+  const { setCurrentPage, selectedRegion, api, showToast } = useContext(AppContext);
+  const [charterData, setCharterData] = useState({
+    purpose: '',
+    hours: 4,
+    startLocation: '',
+    date: '',
+    time: '',
+    passengers: 1,
+    vehicle: 'standard',
+    customer: {
+      name: '',
+      phone: '',
+      email: '',
+      requests: ''
+    }
+  });
+  const [loading, setLoading] = useState(false);
+
+  const calculatePrice = () => {
+    const hourlyRate = charterData.vehicle === 'premium' ? 100 : 80;
+    return hourlyRate * charterData.hours;
+  };
+
+  const handleSubmit = async () => {
+    if (!charterData.purpose || !charterData.startLocation || !charterData.date || 
+        !charterData.time || !charterData.customer.name || !charterData.customer.phone) {
+      showToast('필수 정보를 모두 입력해주세요.', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const charterRequest = {
+        customer_info: {
+          name: charterData.customer.name,
+          phone: charterData.customer.phone,
+          email: charterData.customer.email,
+          kakao_id: ''
+        },
+        service_info: {
+          type: 'charter',
+          region: selectedRegion
+        },
+        trip_details: {
+          departure: {
+            location: charterData.startLocation,
+            datetime: new Date(`${charterData.date}T${charterData.time}`)
+          },
+          arrival: {
+            location: charterData.startLocation
+          }
+        },
+        charter_info: {
+          hours: charterData.hours,
+          purpose: charterData.purpose,
+          special_requests: charterData.customer.requests
+        },
+        vehicles: [{
+          type: charterData.vehicle,
+          passengers: charterData.passengers,
+          luggage: 0
+        }],
+        pricing: {
+          total_amount: calculatePrice()
+        }
+      };
+
+      const response = await api.createBooking(charterRequest);
+      
+      if (response.success) {
+        showToast('대절 예약이 완료되었습니다!', 'success');
+        setCurrentPage('home');
+      } else {
+        throw new Error(response.message || '예약 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      showToast(error.message || '예약 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="flex items-center p-4">
+          <button onClick={() => setCurrentPage('home')} className="p-2">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="ml-4 text-lg font-semibold">시간제 대절</h1>
+        </div>
+      </header>
+
+      <div className="p-4 space-y-4">
+        <div className="bg-white rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4">대절 정보</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">이용 목적</label>
+              <select
+                value={charterData.purpose}
+                onChange={(e) => setCharterData(prev => ({ ...prev, purpose: e.target.value }))}
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              >
+                <option value="">선택하세요</option>
+                <option value="tour">관광</option>
+                <option value="business">비즈니스</option>
+                <option value="shopping">쇼핑</option>
+                <option value="event">행사</option>
+                <option value="other">기타</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">이용 시간</label>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => charterData.hours > 1 && 
+                    setCharterData(prev => ({ ...prev, hours: prev.hours - 1 }))}
+                  className="w-10 h-10 rounded-xl border-2 border-gray-300 flex items-center justify-center"
+                >
+                  <Minus className="w-5 h-5" />
+                </button>
+                <span className="font-semibold text-lg w-16 text-center">{charterData.hours}시간</span>
+                <button
+                  onClick={() => setCharterData(prev => ({ ...prev, hours: prev.hours + 1 }))}
+                  className="w-10 h-10 rounded-xl border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">출발 장소</label>
+              <input
+                type="text"
+                value={charterData.startLocation}
+                onChange={(e) => setCharterData(prev => ({ ...prev, startLocation: e.target.value }))}
+                placeholder="출발 장소를 입력하세요"
+                className="w-full p-3 border border-gray-300 rounded-xl"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">날짜</label>
+                <input
+                  type="date"
+                  value={charterData.date}
+                  onChange={(e) => setCharterData(prev => ({ ...prev, date: e.target.value }))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full p-3 border border-gray-300 rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">시간</label>
+                <input
+                  type="time"
+                  value={charterData.time}
+                  onChange={(e) => setCharterData(prev => ({ ...prev, time: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">차량 선택</label>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setCharterData(prev => ({ ...prev, vehicle: 'standard' }))}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    charterData.vehicle === 'standard'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <p className="font-medium">일반 차량</p>
+                  <p className="text-sm text-gray-500">시간당 $80</p>
+                </button>
+                <button
+                  onClick={() => setCharterData(prev => ({ ...prev, vehicle: 'premium' }))}
+                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    charterData.vehicle === 'premium'
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <p className="font-medium">프리미엄 차량</p>
+                  <p className="text-sm text-gray-500">시간당 $100</p>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4">예약자 정보</h2>
+          
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={charterData.customer.name}
+              onChange={(e) => setCharterData(prev => ({
+                ...prev,
+                customer: { ...prev.customer, name: e.target.value }
+              }))}
+              placeholder="이름"
+              className="w-full p-3 border border-gray-300 rounded-xl"
+            />
+            <input
+              type="tel"
+              value={charterData.customer.phone}
+              onChange={(e) => setCharterData(prev => ({
+                ...prev,
+                customer: { ...prev.customer, phone: e.target.value }
+              }))}
+              placeholder="전화번호"
+              className="w-full p-3 border border-gray-300 rounded-xl"
+            />
+            <input
+              type="email"
+              value={charterData.customer.email}
+              onChange={(e) => setCharterData(prev => ({
+                ...prev,
+                customer: { ...prev.customer, email: e.target.value }
+              }))}
+              placeholder="이메일 (선택)"
+              className="w-full p-3 border border-gray-300 rounded-xl"
+            />
+            <textarea
+              value={charterData.customer.requests}
+              onChange={(e) => setCharterData(prev => ({
+                ...prev,
+                customer: { ...prev.customer, requests: e.target.value }
+              }))}
+              placeholder="요청사항 (선택)"
+              rows="3"
+              className="w-full p-3 border border-gray-300 rounded-xl resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-2xl p-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-gray-700">예상 요금</span>
+            <span className="text-2xl font-bold text-blue-600">${calculatePrice()}</span>
+          </div>
+          <p className="text-sm text-gray-600">
+            {charterData.hours}시간 × ${charterData.vehicle === 'premium' ? 100 : 80}
+          </p>
+        </div>
+
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className={`w-full py-4 rounded-xl font-medium text-white transition-all ${
+            loading ? 'bg-gray-300' : 'bg-blue-500 hover:bg-blue-600'
+          }`}
+        >
+          {loading ? '예약 중...' : '대절 예약하기'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 예약 확인 페이지
+const ConfirmationPage = () => {
+  const { setCurrentPage, bookingData } = useContext(AppContext);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white p-8 text-center">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="w-10 h-10 text-green-600" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">예약이 완료되었습니다!</h1>
+        <p className="text-gray-600 mb-8">예약 확인서가 이메일로 발송되었습니다</p>
+
+        <div className="bg-gray-100 rounded-2xl p-6 mb-6">
+          <p className="text-sm text-gray-600 mb-2">예약번호</p>
+          <p className="text-2xl font-bold">{bookingData.bookingNumber}</p>
+        </div>
+
+        <div className="space-y-3 text-left max-w-sm mx-auto mb-8">
+          <div className="flex justify-between">
+            <span className="text-gray-600">경로</span>
+            <span className="font-medium">{bookingData.departure} → {bookingData.arrival}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">일시</span>
+            <span className="font-medium">{bookingData.datetime.date} {bookingData.datetime.time}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">총 요금</span>
+            <span className="font-bold text-lg">${bookingData.totalAmount}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setCurrentPage('home')}
+          className="w-full max-w-sm py-3 bg-blue-500 text-white rounded-xl font-medium"
+        >
+          홈으로 돌아가기
+        </button>
+      </div>
+    </div>
+  );
 };
 
 // 관리자 페이지
@@ -447,12 +1788,10 @@ const AdminPage = () => {
         setUploadFile(null);
         setClearExisting(false);
         
-        // 업로드 후 데이터 탭이 활성화되어 있으면 새로고침
         if (activeTab === 'data') {
           loadTaxiData();
         }
         
-        // 통계도 새로고침
         if (activeTab === 'stats') {
           loadStats();
         }
@@ -475,7 +1814,6 @@ const AdminPage = () => {
         ...filters
       };
       
-      // 빈 필터 제거
       Object.keys(params).forEach(key => {
         if (params[key] === '') {
           delete params[key];
@@ -491,15 +1829,9 @@ const AdminPage = () => {
           total: response.pagination?.total || 0,
           pages: response.pagination?.pages || 1
         }));
-        
-        if (response.data.length === 0) {
-          showToast('검색된 데이터가 없습니다.', 'info');
-        }
-      } else {
-        throw new Error(response.message || '데이터 로드 실패');
       }
     } catch (error) {
-      showToast(error.message || '데이터를 불러오는데 실패했습니다.', 'error');
+      showToast('데이터를 불러오는데 실패했습니다.', 'error');
     } finally {
       setLoading(false);
     }
@@ -511,70 +1843,12 @@ const AdminPage = () => {
       const response = await api.getStats();
       if (response.success) {
         setStats(response.data);
-        if (response.data.length === 0) {
-          showToast('통계 데이터가 없습니다. 먼저 택시 데이터를 업로드해주세요.', 'info');
-        }
-      } else {
-        throw new Error(response.message || '통계 로드 실패');
       }
     } catch (error) {
-      showToast(error.message || '통계를 불러오는데 실패했습니다.', 'error');
+      showToast('통계를 불러오는데 실패했습니다.', 'error');
     } finally {
       setLoading(false);
     }
-  };
-
-  const deleteAllData = async () => {
-    if (!window.confirm('정말로 모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-      return;
-    }
-
-    const confirmText = prompt('전체 데이터를 삭제하려면 "DELETE_ALL"을 입력하세요:');
-    if (confirmText !== 'DELETE_ALL') {
-      showToast('삭제가 취소되었습니다.', 'info');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:5001/api/taxi/all', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ confirm: 'DELETE_ALL' })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        showToast(data.message, 'success');
-        setTaxiData([]);
-        setStats([]);
-        setPagination(prev => ({ ...prev, total: 0, pages: 1 }));
-      } else {
-        showToast(data.message || '삭제 실패', 'error');
-      }
-    } catch (error) {
-      showToast('서버 연결 실패', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    setPagination(prev => ({ ...prev, page: 1 })); // 필터 변경 시 첫 페이지로
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      region: '',
-      search: '',
-      departure_is_airport: '',
-      arrival_is_airport: ''
-    });
-    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   useEffect(() => {
@@ -585,2803 +1859,240 @@ const AdminPage = () => {
     }
   }, [activeTab, pagination.page, filters]);
 
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    
-    // 탭 변경 시 필터와 페이지네이션 초기화
-    if (tabId === 'data') {
-      resetFilters();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-              <h1 className="text-xl font-bold">택시 데이터 관리</h1>
-            </div>
-            <div className="text-sm text-gray-600">
-              관리자 모드
-            </div>
-          </div>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="flex items-center p-4">
+          <button onClick={() => setCurrentPage('home')} className="p-2">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="ml-4 text-lg font-semibold">관리자 페이지</h1>
         </div>
       </header>
 
       {/* 탭 네비게이션 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex space-x-8">
-            {[
-              { id: 'upload', label: '파일 업로드', icon: '📤' },
-              { id: 'data', label: '데이터 조회', icon: '📊' },
-              { id: 'stats', label: '통계', icon: '📈' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </div>
+      <div className="bg-white border-b border-gray-200">
+        <div className="flex">
+          {[
+            { id: 'upload', label: '파일 업로드' },
+            { id: 'data', label: '데이터 조회' },
+            { id: 'stats', label: '통계' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              className={`flex-1 py-3 text-center font-medium ${
+                activeTab === tab.id
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto p-6">
-        {/* 데이터 조회 탭 */}
-        {activeTab === 'data' && (
-          <div className="space-y-6">
-            {/* 필터 섹션 */}
-            <Card className="p-6">
-              <h4 className="font-semibold mb-4">필터 및 검색</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">지역</label>
-                  <select
-                    value={filters.region}
-                    onChange={(e) => handleFilterChange('region', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">전체 지역</option>
-                    <option value="NY">뉴욕</option>
-                    <option value="CA">캘리포니아</option>
-                    <option value="NJ">뉴저지</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">출발지 공항</label>
-                  <select
-                    value={filters.departure_is_airport}
-                    onChange={(e) => handleFilterChange('departure_is_airport', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">전체</option>
-                    <option value="Y">공항</option>
-                    <option value="N">일반 지역</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">도착지 공항</label>
-                  <select
-                    value={filters.arrival_is_airport}
-                    onChange={(e) => handleFilterChange('arrival_is_airport', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">전체</option>
-                    <option value="Y">공항</option>
-                    <option value="N">일반 지역</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">검색</label>
-                  <input
-                    type="text"
-                    placeholder="출발지 또는 도착지 검색"
-                    value={filters.search}
-                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Button onClick={loadTaxiData} variant="primary" size="sm" loading={loading}>
-                  검색
-                </Button>
-                <Button onClick={resetFilters} variant="outline" size="sm">
-                  필터 초기화
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">택시 노선 데이터</h3>
-                <div className="flex gap-2">
-                  <Button onClick={loadTaxiData} variant="outline" size="sm" loading={loading}>
-                    새로고침
-                  </Button>
-                  <Button onClick={deleteAllData} variant="danger" size="sm">
-                    전체 삭제
-                  </Button>
-                </div>
-              </div>
-
-              {loading ? (
-                <Loading text="데이터를 불러오는 중..." />
-              ) : taxiData.length === 0 ? (
-                <EmptyState
-                  title="데이터가 없습니다"
-                  message="필터 조건을 변경하거나 새로운 데이터를 업로드해주세요."
-                  action={
-                    <Button onClick={() => setActiveTab('upload')} variant="primary">
-                      데이터 업로드
-                    </Button>
-                  }
-                />
-              ) : (
-                <div>
-                  <div className="mb-4 text-sm text-gray-600 flex justify-between items-center">
-                    <span>
-                      총 {pagination.total}개 중 {((pagination.page - 1) * pagination.limit) + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)}개 표시
-                    </span>
-                    <span>
-                      페이지 {pagination.page} / {Math.ceil(pagination.total / pagination.limit)}
-                    </span>
-                  </div>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">지역</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">출발지</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">도착지</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">예약료</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">현지료</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">총액</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">우선순위</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {taxiData.map((item, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {item.region}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <div className="flex items-center">
-                                <span>{item.departure_kor}</span>
-                                {item.departure_is_airport === 'Y' && <span className="ml-1">✈️</span>}
-                              </div>
-                              <div className="text-xs text-gray-500">{item.departure_eng}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <div className="flex items-center">
-                                <span>{item.arrival_kor}</span>
-                                {item.arrival_is_airport === 'Y' && <span className="ml-1">✈️</span>}
-                              </div>
-                              <div className="text-xs text-gray-500">{item.arrival_eng}</div>
-                            </td>
-                            <td className="px-4 py-3 text-sm font-medium">${item.reservation_fee}</td>
-                            <td className="px-4 py-3 text-sm font-medium">${item.local_payment_fee}</td>
-                            <td className="px-4 py-3 text-sm font-bold text-yellow-600">
-                              ${item.reservation_fee + item.local_payment_fee}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-500">{item.priority || 99}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* 페이지네이션 */}
-                  <div className="mt-4 flex justify-between items-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                      disabled={pagination.page === 1 || loading}
-                    >
-                      이전
-                    </Button>
-                    
-                    <div className="flex gap-2">
-                      {[...Array(Math.min(5, Math.ceil(pagination.total / pagination.limit)))].map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pagination.page === pageNum ? "primary" : "outline"}
-                            size="sm"
-                            onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                          >
-                            {pageNum}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPagination(prev => ({ ...prev, page: Math.min(Math.ceil(pagination.total / pagination.limit), prev.page + 1) }))}
-                      disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit) || loading}
-                    >
-                      다음
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
+      <div className="p-4">
         {/* 파일 업로드 탭 */}
         {activeTab === 'upload' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">엑셀 파일 업로드</h3>
-              
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4 hover:border-blue-400 transition-colors">
-                <div className="text-4xl mb-4">📁</div>
-                <h4 className="text-lg font-medium mb-2">파일을 선택하세요</h4>
-                <p className="text-gray-600 mb-4">xlsx, xls 파일만 업로드 가능합니다 (최대 10MB)</p>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setUploadFile(e.target.files[0])}
-                  className="mb-4"
-                />
+          <div className="bg-white rounded-2xl p-6">
+            <h3 className="text-lg font-semibold mb-4">엑셀 파일 업로드</h3>
+            
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-4">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setUploadFile(e.target.files[0])}
+                className="hidden"
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <div className="text-4xl mb-2">📁</div>
+                <p className="text-gray-600">파일을 선택하세요</p>
                 {uploadFile && (
-                  <p className="text-sm text-green-600">✓ 선택된 파일: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)}MB)</p>
+                  <p className="text-sm text-green-600 mt-2">
+                    선택됨: {uploadFile.name}
+                  </p>
                 )}
-              </div>
+              </label>
+            </div>
 
-              <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={clearExisting}
-                    onChange={(e) => setClearExisting(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <strong>기존 데이터 모두 삭제하고 새로 업로드</strong>
-                    <br />
-                    <span className="text-gray-600">체크하면 기존의 모든 택시 노선 데이터가 삭제됩니다.</span>
-                  </span>
-                </label>
-              </div>
+            <label className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                checked={clearExisting}
+                onChange={(e) => setClearExisting(e.target.checked)}
+                className="mr-2"
+              />
+              <span className="text-sm">기존 데이터 모두 삭제 후 업로드</span>
+            </label>
 
-              <Button 
-                onClick={handleFileUpload}
-                disabled={!uploadFile}
-                loading={loading}
-                className="w-full"
-              >
-                {loading ? '업로드 중...' : '업로드 시작'}
-              </Button>
-            </Card>
-
-            <Card className="p-6 bg-blue-50">
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <span>📋</span>
-                엑셀 파일 형식 가이드
-              </h4>
-              <div className="text-sm space-y-3">
-                <div>
-                  <strong className="text-blue-800">필수 컬럼:</strong>
-                  <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                    <li>region (지역: NY, CA, NJ 등)</li>
-                    <li>departure_kor (출발지 한글명)</li>
-                    <li>departure_eng (출발지 영문명)</li>
-                    <li>departure_is_airport (출발지 공항 여부: Y 또는 N)</li>
-                    <li>arrival_kor (도착지 한글명)</li>
-                    <li>arrival_eng (도착지 영문명)</li>
-                    <li>arrival_is_airport (도착지 공항 여부: Y 또는 N)</li>
-                    <li>reservation_fee (예약료, 숫자)</li>
-                    <li>local_payment_fee (현지 지불료, 숫자)</li>
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-blue-800">선택 컬럼:</strong>
-                  <ul className="list-disc list-inside ml-4 mt-1">
-                    <li>priority (우선순위, 숫자 - 기본값: 99)</li>
-                  </ul>
-                </div>
-                <div className="bg-white p-3 rounded border-l-4 border-blue-500">
-                  <strong>예시:</strong><br />
-                  region: NY, departure_kor: NY 맨해튼 미드타운, departure_eng: Manhattan Midtown, departure_is_airport: N, ...
-                </div>
-              </div>
-            </Card>
+            <button
+              onClick={handleFileUpload}
+              disabled={!uploadFile || loading}
+              className={`w-full py-3 rounded-xl font-medium text-white ${
+                !uploadFile || loading
+                  ? 'bg-gray-300'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+            >
+              {loading ? '업로드 중...' : '업로드'}
+            </button>
           </div>
         )}
 
-        {/* 데이터 조회 탭은 이미 위에 있음 */}
+        {/* 데이터 조회 탭 */}
+        {activeTab === 'data' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl p-4">
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <select
+                  value={filters.region}
+                  onChange={(e) => setFilters(prev => ({ ...prev, region: e.target.value }))}
+                  className="p-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="">전체 지역</option>
+                  <option value="NY">뉴욕</option>
+                  <option value="CA">캘리포니아</option>
+                  <option value="NJ">뉴저지</option>
+                </select>
+                
+                <input
+                  type="text"
+                  placeholder="검색"
+                  value={filters.search}
+                  onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="p-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">로딩 중...</p>
+              </div>
+            ) : taxiData.length > 0 ? (
+              <div className="space-y-2">
+                {taxiData.map((item, index) => (
+                  <div key={index} className="bg-white rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">
+                          {item.departure_kor} → {item.arrival_kor}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {item.departure_eng} → {item.arrival_eng}
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold">
+                        ${item.reservation_fee + item.local_payment_fee}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-1 bg-gray-100 rounded">{item.region}</span>
+                      {item.departure_is_airport === 'Y' && 
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">공항출발</span>
+                      }
+                      {item.arrival_is_airport === 'Y' && 
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">공항도착</span>
+                      }
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">데이터가 없습니다</p>
+              </div>
+            )}
+
+            {/* 페이지네이션 */}
+            {taxiData.length > 0 && (
+              <div className="flex justify-center gap-2 mt-4">
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                  disabled={pagination.page === 1}
+                  className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50"
+                >
+                  이전
+                </button>
+                <span className="px-3 py-1 text-sm">
+                  {pagination.page} / {Math.ceil(pagination.total / pagination.limit)}
+                </span>
+                <button
+                  onClick={() => setPagination(prev => ({ 
+                    ...prev, 
+                    page: Math.min(Math.ceil(pagination.total / pagination.limit), prev.page + 1) 
+                  }))}
+                  disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)}
+                  className="px-3 py-1 rounded border border-gray-300 text-sm disabled:opacity-50"
+                >
+                  다음
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 통계 탭 */}
         {activeTab === 'stats' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">지역별 통계</h3>
-                <Button onClick={loadStats} variant="outline" size="sm" loading={loading}>
-                  새로고침
-                </Button>
-              </div>
-
-              {loading ? (
-                <Loading text="통계를 불러오는 중..." />
-              ) : stats.length === 0 ? (
-                <EmptyState
-                  title="통계 데이터가 없습니다"
-                  message="먼저 택시 노선 데이터를 업로드해주세요."
-                  action={
-                    <Button onClick={() => setActiveTab('upload')} variant="primary">
-                      데이터 업로드하기
-                    </Button>
-                  }
-                  icon="📊"
-                />
-              ) : (
-                <div className="space-y-6">
-                  {/* 요약 카드 */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6">
-                      <h4 className="text-lg font-semibold mb-2">총 노선 수</h4>
-                      <p className="text-3xl font-bold">{stats.reduce((sum, stat) => sum + stat.count, 0)}</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-6">
-                      <h4 className="text-lg font-semibold mb-2">평균 총 요금</h4>
-                      <p className="text-3xl font-bold">
-                        ${Math.round(stats.reduce((sum, stat) => sum + (stat.avgReservationFee + stat.avgLocalPaymentFee), 0) / stats.length)}
-                      </p>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-6">
-                      <h4 className="text-lg font-semibold mb-2">서비스 지역</h4>
-                      <p className="text-3xl font-bold">{stats.length}</p>
-                    </div>
-                  </div>
-
-                  {/* 지역별 상세 통계 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {stats.map((stat, index) => (
-                      <Card key={index} className="p-6 bg-gradient-to-br from-blue-50 to-blue-100">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-bold text-blue-900">{stat._id}</h4>
-                          <span className="text-2xl font-bold text-blue-600">{stat.count}</span>
-                        </div>
-                        
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">평균 예약료:</span>
-                            <span className="font-semibold">${Math.round(stat.avgReservationFee)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">평균 현지료:</span>
-                            <span className="font-semibold">${Math.round(stat.avgLocalPaymentFee)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">평균 총액:</span>
-                            <span className="font-semibold text-blue-800">${Math.round(stat.avgReservationFee + stat.avgLocalPaymentFee)}</span>
-                          </div>
-                          <hr className="border-blue-200" />
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">공항 출발:</span>
-                            <span className="font-semibold">{stat.airportDepartures}개</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">공항 도착:</span>
-                            <span className="font-semibold">{stat.airportArrivals}개</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-blue-700">공항 노선:</span>
-                            <span className="font-semibold">{Math.round((stat.airportDepartures + stat.airportArrivals) / stat.count * 100)}%</span>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// PWA 및 최종 개선사항
-const PWAInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstall, setShowInstall] = useState(false);
-
-  useEffect(() => {
-    const handler = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstall(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setShowInstall(false);
-      setDeferredPrompt(null);
-    }
-  };
-
-  if (!showInstall) return null;
-
-  return (
-    <div className="fixed bottom-24 left-4 right-4 max-w-md mx-auto bg-blue-500 text-white p-4 rounded-lg shadow-lg z-30">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="font-semibold text-sm">앱으로 설치</div>
-          <div className="text-xs opacity-90">홈 화면에 추가하여 빠르게 이용하세요</div>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={() => setShowInstall(false)}
-            className="text-xs px-3 py-1"
-          >
-            나중에
-          </Button>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={handleInstall}
-            className="text-xs px-3 py-1 bg-white text-blue-500"
-          >
-            설치
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 성능 모니터링 훅
-const usePerformance = () => {
-  useEffect(() => {
-    // 페이지 로드 성능 측정
-    if ('performance' in window) {
-      const observer = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.entryType === 'navigation') {
-            console.log('페이지 로드 시간:', entry.loadEventEnd - entry.loadEventStart, 'ms');
-          }
-        }
-      });
-      
-      observer.observe({ entryTypes: ['navigation'] });
-      
-      return () => observer.disconnect();
-    }
-  }, []);
-};
-
-// 메인 앱 컴포넌트 최종 업데이트
-const YellorideApp = () => {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedRegion, setSelectedRegion] = useState(() => {
-    return localStorage.getItem('selectedRegion') || 'NY';
-  });
-  const { showToast, ToastContainer } = useToast();
-  const [bookingData, setBookingData] = useState({
-    departure: null,
-    arrival: null,
-    region: 'NY',
-    serviceType: 'airport',
-    step: 1,
-    datetime: {
-      date: '',
-      time: '12:00'
-    },
-    passengers: 1,
-    luggage: 0,
-    vehicle: 'standard',
-    customer: {
-      name: '',
-      phone: '',
-      kakao: ''
-    },
-    flight: {
-      number: '',
-      terminal: ''
-    },
-    bookingNumber: '',
-    totalAmount: 0
-  });
-
-  const api = new YellorideAPI();
-  usePerformance();
-
-  // 지역 선택 시 localStorage에 저장
-  useEffect(() => {
-    localStorage.setItem('selectedRegion', selectedRegion);
-  }, [selectedRegion]);
-
-  // 키보드 단축키
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // ESC로 이전 페이지로
-      if (e.key === 'Escape' && currentPage !== 'home') {
-        setCurrentPage('home');
-      }
-      
-      // Ctrl+K로 관리자 페이지 (개발자용)
-      if (e.ctrlKey && e.key === 'k') {
-        e.preventDefault();
-        setCurrentPage('admin');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage]);
-
-  // 지역 데이터
-  const regionData = {
-    NY: {
-      name: '뉴욕',
-      desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
-      airports: [
-        { name_kor: 'NY 존에프케네디 공항', name_eng: 'JFK Airport', is_airport: true },
-        { name_kor: 'NY 라과디아 공항', name_eng: 'LGA Airport', is_airport: true },
-        { name_kor: 'NJ 뉴와크 공항', name_eng: 'EWR Airport', is_airport: true }
-      ],
-      places: [
-        { name_kor: 'NY 맨해튼 미드타운', name_eng: 'Manhattan Midtown' },
-        { name_kor: 'NY 맨해튼 다운타운', name_eng: 'Manhattan Downtown' },
-        { name_kor: 'NY 브루클린', name_eng: 'Brooklyn' },
-        { name_kor: 'NY 플러싱', name_eng: 'Flushing' },
-        { name_kor: 'NY 자메이카', name_eng: 'Jamaica' }
-      ]
-    },
-    CA: {
-      name: '캘리포니아',
-      desc: 'LA, 샌프란시스코, LAX/SFO 공항',
-      airports: [
-        { name_kor: 'LAX 국제공항', name_eng: 'LAX Airport', is_airport: true },
-        { name_kor: 'SFO 국제공항', name_eng: 'SFO Airport', is_airport: true },
-        { name_kor: '버뱅크 공항', name_eng: 'Burbank Airport', is_airport: true }
-      ],
-      places: [
-        { name_kor: 'LA 다운타운', name_eng: 'Downtown LA' },
-        { name_kor: 'LA 할리우드', name_eng: 'Hollywood' },
-        { name_kor: 'LA 베벌리힐스', name_eng: 'Beverly Hills' },
-        { name_kor: 'SF 유니언 스퀘어', name_eng: 'Union Square' },
-        { name_kor: 'SF 피셔맨스 워프', name_eng: 'Fisherman\'s Wharf' }
-      ]
-    }
-  };
-
-  const contextValue = {
-    currentPage, setCurrentPage,
-    selectedRegion, setSelectedRegion,
-    bookingData, setBookingData,
-    regionData,
-    api,
-    showToast
-  };
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-gray-50">
-        {/* 메타 태그 (실제 프로덕션에서는 HTML head에 위치) */}
-        <div style={{ display: 'none' }}>
-          {/* PWA를 위한 메타 정보는 실제 HTML에서 설정 */}
-          <meta name="theme-color" content="#4285f4" />
-          <meta name="apple-mobile-web-app-capable" content="yes" />
-          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-          <meta name="apple-mobile-web-app-title" content="YelloRide" />
-          <link rel="apple-touch-icon" href="/icon-192x192.png" />
-          <link rel="manifest" href="/manifest.json" />
-        </div>
-
-        {currentPage === 'home' && <HomePage />}
-        {currentPage === 'booking' && <BookingPage />}
-        {currentPage === 'charter' && <CharterPage />}
-        {currentPage === 'search' && <SearchPage />}
-        {currentPage === 'confirmation' && <ConfirmationPage />}
-        {currentPage === 'admin' && <AdminPage />}
-        
-        {/* 전역 컴포넌트들 */}
-        <ToastContainer />
-        <ConnectionStatus />
-        <PWAInstallPrompt />
-        
-        {/* 개발자 힌트 (프로덕션에서는 제거) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-2 left-2 text-xs text-gray-400 bg-black bg-opacity-50 text-white px-2 py-1 rounded z-50">
-            ESC: 홈으로 | Ctrl+K: 관리자
-          </div>
-        )}
-      </div>
-    </AppContext.Provider>
-  );
-};
-
-// 홈페이지 컴포넌트 개선
-const HomePage = () => {
-  const { setCurrentPage, selectedRegion, setSelectedRegion, regionData, bookingData, setBookingData, api, showToast } = useContext(AppContext);
-  const [showRegionModal, setShowRegionModal] = useState(false);
-  const [showLocationModal, setShowLocationModal] = useState(false);
-  const [locationSelectType, setLocationSelectType] = useState('departure');
-  const [availableArrivals, setAvailableArrivals] = useState(null);
-  const [availableDepartures, setAvailableDepartures] = useState(null);
-  const [searchResults, setSearchResults] = useState([]);
-  const [popularRoutes, setPopularRoutes] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const currentRegionData = regionData[selectedRegion];
-
-  const computeLocationLists = () => {
-    const list =
-      locationSelectType === 'departure' ? availableDepartures : availableArrivals;
-
-    if (Array.isArray(list) && list.length > 0) {
-      const airports = list.filter(l => l.is_airport === 'Y' || l.is_airport === true);
-      const places = list.filter(l => !(l.is_airport === 'Y' || l.is_airport === true));
-      return { airportsList: airports, placesList: places };
-    }
-
-    return {
-      airportsList: currentRegionData?.airports || [],
-      placesList: currentRegionData?.places || []
-    };
-  };
-
-  const { airportsList, placesList } = computeLocationLists();
-
-  useEffect(() => {
-    loadPopularRoutes();
-    setAvailableDepartures(null);
-    setAvailableArrivals(null);
-  }, [selectedRegion]);
-
-  useEffect(() => {
-    if (showLocationModal && locationSelectType === 'arrival' && bookingData.departure) {
-      fetchArrivals();
-    }
-  }, [showLocationModal, locationSelectType, bookingData.departure]);
-
-  useEffect(() => {
-    if (showLocationModal && locationSelectType === 'departure') {
-      fetchDepartures();
-    }
-  }, [showLocationModal, locationSelectType, selectedRegion]);
-
-  const loadPopularRoutes = async () => {
-    try {
-      const response = await api.getTaxiItems({
-        region: selectedRegion,
-        limit: 6,
-        sort: 'priority'
-      });
-      
-      if (response.success && Array.isArray(response.data)) {
-        setPopularRoutes(response.data);
-      } else {
-        setPopularRoutes([]);
-      }
-    } catch (error) {
-      console.error('인기 노선 로드 오류:', error);
-    }
-  };
-
-  const fetchArrivals = async () => {
-    try {
-      const response = await api.getArrivals(
-        bookingData.departure.split(' - ')[0],
-        selectedRegion,
-        'kor'
-      );
-
-      if (response.success && Array.isArray(response.data)) {
-        setAvailableArrivals(response.data);
-      } else {
-        setAvailableArrivals([]);
-      }
-    } catch (error) {
-      console.error('도착지 목록 로드 오류:', error);
-      setAvailableArrivals([]);
-    }
-  };
-
-  const fetchDepartures = async () => {
-    try {
-      const response = await api.getDepartures(
-        selectedRegion,
-        'kor'
-      );
-
-      if (response.success && Array.isArray(response.data)) {
-        setAvailableDepartures(response.data);
-      } else {
-        setAvailableDepartures([]);
-      }
-    } catch (error) {
-      console.error('출발지 목록 로드 오류:', error);
-      setAvailableDepartures([]);
-    }
-  };
-
-  const selectLocation = (type) => {
-    setLocationSelectType(type);
-    setShowLocationModal(true);
-    if (type === 'departure') {
-      setAvailableDepartures(null);
-    } else {
-      setAvailableArrivals(null);
-    }
-  };
-
-  const setLocation = (location) => {
-    setBookingData(prev => ({
-      ...prev,
-      [locationSelectType]: location
-    }));
-    setShowLocationModal(false);
-
-    if (locationSelectType === 'departure') {
-      setAvailableArrivals(null);
-    }
-
-    // 선택 완료 후 자동으로 경로 검색
-    if (locationSelectType === 'arrival' && bookingData.departure) {
-      searchRoutes(bookingData.departure, location);
-    } else if (locationSelectType === 'departure' && bookingData.arrival) {
-      searchRoutes(location, bookingData.arrival);
-    }
-  };
-
-  const searchRoutes = async (departure, arrival) => {
-    if (!departure || !arrival) return;
-
-    setLoading(true);
-    try {
-      const response = await api.searchRoute(
-        departure.split(' - ')[0], 
-        arrival.split(' - ')[0], 
-        'kor'
-      );
-      
-      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-        setSearchResults(response.data);
-        showToast(`${response.data.length}개의 경로를 찾았습니다.`, 'success');
-      } else {
-        showToast('해당 경로를 찾을 수 없습니다.', 'warning');
-        setSearchResults([]);
-      }
-    } catch (error) {
-      showToast('경로 검색 중 오류가 발생했습니다.', 'error');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startBooking = (routeData = null) => {
-    if (bookingData.departure && bookingData.arrival) {
-      const isAirport = bookingData.departure.includes('공항') || bookingData.arrival.includes('공항');
-      
-      setBookingData(prev => ({
-        ...prev,
-        serviceType: isAirport ? 'airport' : 'taxi',
-        region: selectedRegion,
-        ...(routeData && {
-          priceData: {
-            reservation_fee: routeData.reservation_fee,
-            local_payment_fee: routeData.local_payment_fee
-          }
-        })
-      }));
-      
-      setCurrentPage('booking');
-    }
-  };
-
-  const quickSelectRoute = (route) => {
-    setBookingData(prev => ({ 
-      ...prev, 
-      departure: route.departure_kor, 
-      arrival: route.arrival_kor,
-      region: selectedRegion
-    }));
-    
-    // 자동으로 예약 페이지로 이동
-    setTimeout(() => {
-      startBooking(route);
-    }, 500);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-blue-500">YELLORIDE</h1>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" className="p-2">
-                🔔
-              </Button>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="p-2"
-                onClick={() => setCurrentPage('admin')}
-                title="관리자 페이지"
-              >
-                ⚙️
-              </Button>
-              <Button variant="secondary" size="sm" className="p-2">
-                👤
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* 지역 선택 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div 
-            className="flex items-center justify-between cursor-pointer"
-            onClick={() => setShowRegionModal(true)}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold text-sm">
-                {selectedRegion}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{currentRegionData?.name}</h3>
-                <p className="text-sm text-gray-600">{currentRegionData?.desc}</p>
-              </div>
-            </div>
-            <span className="text-gray-400">›</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
-        {/* 여행 계획 카드 */}
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-6">어디로 모실까요?</h2>
-          
-          <div className="space-y-1 relative">
-            <div 
-              className={`p-4 rounded-lg border cursor-pointer transition-all ${bookingData.departure ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-              onClick={() => selectLocation('departure')}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">출발지</div>
-                  <div className={`font-medium ${bookingData.departure ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {bookingData.departure || '어디서 출발하시나요?'}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="absolute left-6 top-12 w-0.5 h-4 bg-gray-300"></div>
-            
-            <div 
-              className={`p-4 rounded-lg border cursor-pointer transition-all ${bookingData.arrival ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-              onClick={() => selectLocation('arrival')}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <div>
-                  <div className="text-xs text-gray-600 mb-1">도착지</div>
-                  <div className={`font-medium ${bookingData.arrival ? 'text-gray-900' : 'text-gray-400'}`}>
-                    {bookingData.arrival || '어디로 가시나요?'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* 인기 노선 */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="font-semibold">인기 노선</h3>
-            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-semibold">HOT</span>
-          </div>
-          
-          {popularRoutes.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {popularRoutes.map((route, index) => (
-                <button
-                  key={index}
-                  className="bg-gray-100 hover:bg-blue-100 hover:border-blue-300 border border-gray-200 rounded-full px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2"
-                  onClick={() => quickSelectRoute(route)}
-                >
-                  <span>{route.departure_kor.split(' - ')[0]} → {route.arrival_kor.split(' - ')[0]}</span>
-                  <span className="text-xs text-green-600 font-semibold">${route.reservation_fee + route.local_payment_fee}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">인기 노선이 없습니다.</p>
-          )}
-        </Card>
-
-        {/* 검색 결과 */}
-        {searchResults.length > 0 && (
-          <Card className="p-6">
-            <h3 className="font-semibold mb-4">검색 결과</h3>
-            <div className="space-y-3">
-              {searchResults.map((route, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 cursor-pointer transition-colors"
-                  onClick={() => startBooking(route)}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">
-                        {route.departure_kor.split(' - ')[0]} → {route.arrival_kor.split(' - ')[0]}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">
-                        {route.departure_eng} → {route.arrival_eng}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-blue-600">${route.reservation_fee + route.local_payment_fee}</div>
-                      <div className="text-xs text-gray-500">예약비 ${route.reservation_fee} + 현지비 ${route.local_payment_fee}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className={`px-2 py-1 rounded-full ${route.region === 'NY' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                      {route.region}
-                    </span>
-                    {route.departure_is_airport === 'Y' && <span>✈️ 공항출발</span>}
-                    {route.arrival_is_airport === 'Y' && <span>✈️ 공항도착</span>}
-                    <span className="ml-auto bg-gray-100 px-2 py-1 rounded">우선순위 {route.priority || 99}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* 서비스 메뉴 */}
-        <div>
-          <h3 className="font-semibold mb-4">서비스 메뉴</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-4 text-center" onClick={() => setCurrentPage('booking')}>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
-                ✈️
-              </div>
-              <div className="font-semibold mb-1">공항 이동</div>
-              <div className="text-sm text-gray-600">빠르고 안전하게</div>
-            </Card>
-            
-            <Card className="p-4 text-center" onClick={() => setCurrentPage('charter')}>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
-                🚙
-              </div>
-              <div className="font-semibold mb-1">택시 대절</div>
-              <div className="text-sm text-gray-600">시간제 이용</div>
-            </Card>
-            
-            <Card className="p-4 text-center" onClick={() => setCurrentPage('search')}>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
-                📋
-              </div>
-              <div className="font-semibold mb-1">예약 조회</div>
-              <div className="text-sm text-gray-600">예약 확인/변경</div>
-            </Card>
-            
-            <Card className="p-4 text-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
-                💬
-              </div>
-              <div className="font-semibold mb-1">고객센터</div>
-              <div className="text-sm text-gray-600">24시간 지원</div>
-            </Card>
-          </div>
-        </div>
-
-        {/* 프로모션 */}
-        <Card className="p-6 bg-gradient-to-r from-blue-500 to-green-500 text-white">
-          <h3 className="text-lg font-bold mb-2">첫 예약 $10 할인!</h3>
-          <p className="text-sm opacity-90 mb-4">신규 고객님께 특별한 혜택을 드립니다</p>
-          <Button variant="secondary" size="sm">
-            자세히 보기
-          </Button>
-        </Card>
-      </div>
-
-      {/* 예약하기 버튼 */}
-      <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto z-40">
-        <Button
-          className="w-full shadow-lg"
-          disabled={!bookingData.departure || !bookingData.arrival || loading}
-          loading={loading}
-          onClick={() => startBooking()}
-        >
-          {loading ? '경로 검색 중...' : 
-           bookingData.departure && bookingData.arrival ? '예약하기' : 
-           '출발지와 도착지를 선택하세요'}
-        </Button>
-      </div>
-
-      {/* 하단 네비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-md mx-auto flex">
-          <button className="flex-1 py-3 text-center">
-            <div className="text-blue-500 mb-1">🏠</div>
-            <div className="text-xs font-medium text-blue-500">홈</div>
-          </button>
-          <button className="flex-1 py-3 text-center" onClick={() => setCurrentPage('search')}>
-            <div className="text-gray-400 mb-1">📋</div>
-            <div className="text-xs text-gray-400">예약내역</div>
-          </button>
-          <button className="flex-1 py-3 text-center">
-            <div className="text-gray-400 mb-1">💬</div>
-            <div className="text-xs text-gray-400">고객센터</div>
-          </button>
-          <button className="flex-1 py-3 text-center">
-            <div className="text-gray-400 mb-1">👤</div>
-            <div className="text-xs text-gray-400">내정보</div>
-          </button>
-        </div>
-      </nav>
-
-      {/* 지역 선택 모달 */}
-      {showRegionModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50"
-          onClick={() => setShowRegionModal(false)}
-          onKeyDown={(e) => e.key === 'Escape' && setShowRegionModal(false)}
-          tabIndex={-1}
-        >
-          <div 
-            className="bg-white w-full max-w-md mx-auto rounded-t-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold">서비스 지역 선택</h3>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="p-2"
-                onClick={() => setShowRegionModal(false)}
-                aria-label="모달 닫기"
-              >
-                ✕
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {Object.entries(regionData).map(([code, data]) => (
-                <button
-                  key={code}
-                  className={`w-full p-4 rounded-lg cursor-pointer transition-colors text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedRegion === code ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}`}
-                  onClick={() => {
-                    setSelectedRegion(code);
-                    setShowRegionModal(false);
-                    showToast(`${data.name} 지역이 선택되었습니다.`, 'success');
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="font-semibold">{data.name}</h4>
-                      <p className="text-sm text-gray-600">{data.desc}</p>
-                    </div>
-                    {selectedRegion === code && (
-                      <CheckCircle className="w-5 h-5 text-blue-500" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 위치 선택 모달 */}
-      {showLocationModal && (
-        <div className="fixed inset-0 bg-white z-50">
-          <div className="max-w-md mx-auto h-full flex flex-col">
-            <header className="bg-white border-b border-gray-200 p-4">
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  className="p-2" 
-                  onClick={() => setShowLocationModal(false)}
-                  aria-label="뒤로 가기"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-                <h3 className="text-lg font-semibold">
-                  {locationSelectType === 'departure' ? '출발지 선택' : '도착지 선택'}
-                </h3>
-              </div>
-            </header>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <span>✈️</span>
-                  공항
-                </h4>
-                <div className="space-y-2">
-                  {airportsList.map((location, index) => (
-                    <button
-                      key={index}
-                      className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onClick={() => setLocation(location.name_kor)}
-                      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
-                    >
-                      <div className="font-medium">{location.name_kor}</div>
-                      <div className="text-sm text-gray-600">{location.name_eng}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                  <span>🏙️</span>
-                  일반 지역
-                </h4>
-                <div className="space-y-2">
-                  {placesList.map((location, index) => (
-                    <button
-                      key={index}
-                      className="w-full p-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onClick={() => setLocation(location.name_kor)}
-                      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
-                    >
-                      <div className="font-medium">{location.name_kor}</div>
-                      <div className="text-sm text-gray-600">{location.name_eng}</div>
-                    </button>
-                  ))}
-                </div>
-                {airportsList.length === 0 && placesList.length === 0 && (
-                  <p className="text-sm text-gray-500 mt-4">선택 가능한 도착지가 없습니다.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 예약 페이지 컴포넌트
-const BookingPage = () => {
-  const { setCurrentPage, bookingData, setBookingData, api, showToast } = useContext(AppContext);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [routeData, setRouteData] = useState(null);
-  const [priceData, setPriceData] = useState({
-    reservation_fee: 20,
-    local_payment_fee: 75,
-    vehicle_upgrades: { xl_fee: 10, premium_fee: 25 }
-  });
-  const [errors, setErrors] = useState({});
-  const totalSteps = 4;
-
-  useEffect(() => {
-    // 오늘 날짜 설정
-    const today = new Date().toISOString().split('T')[0];
-    setBookingData(prev => ({
-      ...prev,
-      datetime: { ...prev.datetime, date: today }
-    }));
-
-    // 경로 정보 및 가격 조회
-    loadRouteData();
-  }, []);
-
-  const loadRouteData = async () => {
-    if (bookingData.departure && bookingData.arrival) {
-      try {
-        setLoading(true);
-        // 실제 API 호출로 경로 정보 및 가격 조회
-        const response = await api.searchRoute(
-          bookingData.departure.split(' - ')[0], 
-          bookingData.arrival.split(' - ')[0],
-          'kor'
-        );
-        
-        if (response.success && response.data.length > 0) {
-          setRouteData(response.data[0]);
-          // 가격 정보 업데이트
-          setPriceData({
-            reservation_fee: response.data[0].reservation_fee || 20,
-            local_payment_fee: response.data[0].local_payment_fee || 75,
-            vehicle_upgrades: { xl_fee: 10, premium_fee: 25 }
-          });
-          showToast('경로 정보를 불러왔습니다.', 'success');
-        }
-      } catch (error) {
-        console.error('경로 정보 조회 오류:', error);
-        showToast('경로 정보를 불러오는데 실패했습니다. 기본 요금으로 진행됩니다.', 'warning');
-        // 기본값 유지
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const calculateTotalPrice = () => {
-    let total = priceData.reservation_fee + priceData.local_payment_fee;
-    
-    if (bookingData.vehicle === 'xl') {
-      total += priceData.vehicle_upgrades.xl_fee;
-    } else if (bookingData.vehicle === 'premium') {
-      total += priceData.vehicle_upgrades.premium_fee;
-    }
-    
-    return total;
-  };
-
-  const computeStepErrors = (step) => {
-    const newErrors = {};
-    
-    switch (step) {
-      case 1:
-        if (!bookingData.datetime.date) {
-          newErrors.date = '날짜를 선택해주세요.';
-        } else {
-          const selectedDate = new Date(bookingData.datetime.date);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (selectedDate < today) {
-            newErrors.date = '오늘 이후 날짜를 선택해주세요.';
-          }
-        }
-        if (!bookingData.datetime.time) {
-          newErrors.time = '시간을 선택해주세요.';
-        }
-        break;
-        
-      case 2:
-        if (bookingData.passengers < 1) {
-          newErrors.passengers = '최소 1명의 승객이 필요합니다.';
-        }
-        if (bookingData.passengers > 8) {
-          newErrors.passengers = '최대 8명까지 예약 가능합니다.';
-        }
-        break;
-        
-      case 3:
-        if (!bookingData.customer.name.trim()) {
-          newErrors.name = '이름을 입력해주세요.';
-        }
-        if (!bookingData.customer.phone.trim()) {
-          newErrors.phone = '전화번호를 입력해주세요.';
-        } else {
-          // 전화번호 형식 검증
-          const phoneRegex = /^[0-9-+\s()]+$/;
-          if (!phoneRegex.test(bookingData.customer.phone)) {
-            newErrors.phone = '올바른 전화번호 형식을 입력해주세요.';
-          }
-        }
-        break;
-        
-      case 4:
-        // 최종 확인 단계는 항상 valid
-        break;
-        
-      default:
-        return false;
-    }
-    
-    return newErrors;
-  };
-
-  const validateStep = (step) => {
-    const newErrors = computeStepErrors(step);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const isStepValid = React.useMemo(() => {
-    return Object.keys(computeStepErrors(currentStep)).length === 0;
-  }, [currentStep, bookingData]);
-
-  const updateBookingData = (field, value) => {
-    setBookingData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // 에러 클리어
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
-  };
-
-  const nextStep = async () => {
-    if (currentStep < totalSteps) {
-      if (validateStep(currentStep)) {
-        setCurrentStep(prev => prev + 1);
-      } else {
-        showToast('입력 정보를 확인해주세요.', 'error');
-      }
-    } else {
-      await completeBooking();
-    }
-  };
-
-  const completeBooking = async () => {
-    if (!validateStep(currentStep)) {
-      showToast('예약 정보를 다시 확인해주세요.', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // 실제 백엔드 스펙에 맞는 예약 데이터 구성
-      const bookingRequest = {
-        customer_info: {
-          name: bookingData.customer.name,
-          phone: bookingData.customer.phone,
-          kakao_id: bookingData.customer.kakao || ''
-        },
-        service_info: {
-          type: bookingData.serviceType,
-          region: bookingData.region
-        },
-        trip_details: {
-          departure: {
-            location: bookingData.departure,
-            datetime: new Date(`${bookingData.datetime.date}T${bookingData.datetime.time}`)
-          },
-          arrival: {
-            location: bookingData.arrival
-          }
-        },
-        vehicles: [{
-          type: bookingData.vehicle,
-          passengers: bookingData.passengers,
-          luggage: bookingData.luggage
-        }],
-        passenger_info: {
-          total_passengers: bookingData.passengers,
-          total_luggage: bookingData.luggage
-        },
-        flight_info: bookingData.flight.number ? {
-          flight_number: bookingData.flight.number,
-          terminal: bookingData.flight.terminal
-        } : null,
-        pricing: {
-          reservation_fee: priceData.reservation_fee,
-          service_fee: priceData.local_payment_fee,
-          vehicle_upgrade_fee: bookingData.vehicle === 'xl' ? priceData.vehicle_upgrades.xl_fee : 
-                              bookingData.vehicle === 'premium' ? priceData.vehicle_upgrades.premium_fee : 0,
-          total_amount: calculateTotalPrice()
-        }
-      };
-
-      const response = await api.createBooking(bookingRequest);
-      
-      if (response.success) {
-        // 예약 번호를 전역 상태에 저장
-        setBookingData(prev => ({
-          ...prev,
-          bookingNumber: response.data.booking_number || 'YR' + Date.now().toString().slice(-6),
-          totalAmount: response.data.total_amount || calculateTotalPrice()
-        }));
-        
-        showToast('예약이 완료되었습니다!', 'success');
-        setCurrentPage('confirmation');
-      } else {
-        throw new Error(response.message || '예약 생성에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('예약 오류:', error);
-      showToast(error.message || '예약 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const progress = (currentStep / totalSteps) * 100;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <h1 className="text-lg font-semibold">예약하기</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* 진행률 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600">{currentStep}단계 / {totalSteps}단계</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-md mx-auto p-4 pb-32">
-        {/* 경로 정보 카드 */}
-        <Card className="p-4 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-              {bookingData.serviceType === 'airport' ? '공항 이동' : '일반 택시'}
-            </span>
-            <span className="text-lg font-bold">${calculateTotalPrice()}</span>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <div>
-                <div className="text-xs text-gray-600">출발지</div>
-                <div className="font-medium">{bookingData.departure?.split(' - ')[0] || bookingData.departure}</div>
-              </div>
-            </div>
-            <div className="ml-1.5 w-0.5 h-4 bg-gray-300"></div>
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <div>
-                <div className="text-xs text-gray-600">도착지</div>
-                <div className="font-medium">{bookingData.arrival?.split(' - ')[0] || bookingData.arrival}</div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* 단계별 컨텐츠 */}
-        {currentStep === 1 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">언제 이용하시나요?</h3>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <Input
-                type="date"
-                label="날짜"
-                value={bookingData.datetime.date}
-                onChange={(e) => setBookingData(prev => ({
-                  ...prev,
-                  datetime: { ...prev.datetime, date: e.target.value }
-                }))}
-                min={new Date().toISOString().split('T')[0]}
-                error={errors.date}
-              />
-              <Input
-                type="time"
-                label="시간"
-                value={bookingData.datetime.time}
-                onChange={(e) => setBookingData(prev => ({
-                  ...prev,
-                  datetime: { ...prev.datetime, time: e.target.value }
-                }))}
-                error={errors.time}
-              />
-            </div>
-
-            {bookingData.serviceType === 'airport' && (
-              <div className="space-y-4">
-                <h4 className="font-medium">항공편 정보 (선택사항)</h4>
-                <Input
-                  placeholder="항공편 번호 (예: KE001)"
-                  value={bookingData.flight.number}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    flight: { ...prev.flight, number: e.target.value }
-                  }))}
-                />
-                <Input
-                  placeholder="터미널 (예: T1)"
-                  value={bookingData.flight.terminal}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    flight: { ...prev.flight, terminal: e.target.value }
-                  }))}
-                />
-              </div>
-            )}
-          </Card>
-        )}
-
-        {currentStep === 2 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">인원과 짐을 알려주세요</h3>
-            
-            <div className="space-y-6 mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">승객 수</div>
-                  <div className="text-sm text-gray-600">성인 및 아동 포함</div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => bookingData.passengers > 1 && updateBookingData('passengers', bookingData.passengers - 1)}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="w-8 text-center font-semibold">{bookingData.passengers}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => updateBookingData('passengers', bookingData.passengers + 1)}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">짐 개수</div>
-                  <div className="text-sm text-gray-600">수하물 및 기내용 짐</div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => bookingData.luggage > 0 && updateBookingData('luggage', bookingData.luggage - 1)}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="w-8 text-center font-semibold">{bookingData.luggage}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => updateBookingData('luggage', bookingData.luggage + 1)}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <h4 className="font-medium mb-4">차량을 선택해주세요</h4>
-            <div className="space-y-3">
-              {[
-                { type: 'standard', name: '일반 택시', desc: '최대 4명 승차 가능한 일반 승용차', price: '기본 요금' },
-                { type: 'xl', name: '대형 택시', desc: '최대 6명 승차 가능한 SUV 또는 밴', price: '+$10' },
-                { type: 'premium', name: '프리미엄 택시', desc: '최대 4명 승차 가능한 고급 승용차', price: '+$25' }
-              ].map((vehicle) => (
-                <div
-                  key={vehicle.type}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    bookingData.vehicle === vehicle.type 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => updateBookingData('vehicle', vehicle.type)}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="font-medium">{vehicle.name}</div>
-                    <div className="text-sm font-semibold text-blue-600">{vehicle.price}</div>
-                  </div>
-                  <div className="text-sm text-gray-600">{vehicle.desc}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {currentStep === 3 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">연락처 정보를 입력해주세요</h3>
-            
-            <div className="space-y-4">
-              <Input
-                label="이름 *"
-                placeholder="성함을 입력하세요"
-                value={bookingData.customer.name}
-                onChange={(e) => setBookingData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, name: e.target.value }
-                }))}
-                error={errors.name}
-              />
-              <Input
-                label="전화번호 *"
-                type="tel"
-                placeholder="010-1234-5678"
-                value={bookingData.customer.phone}
-                onChange={(e) => setBookingData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, phone: e.target.value }
-                }))}
-                error={errors.phone}
-              />
-              <Input
-                label="카카오톡 ID (선택사항)"
-                placeholder="원활한 소통을 위해 입력해주세요"
-                value={bookingData.customer.kakao}
-                onChange={(e) => setBookingData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, kakao: e.target.value }
-                }))}
-              />
-            </div>
-          </Card>
-        )}
-
-        {currentStep === 4 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">예약 내용을 확인해주세요</h3>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">이용 일시</span>
-                <span className="font-medium">{bookingData.datetime.date} {bookingData.datetime.time}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">이용 경로</span>
-                <span className="font-medium text-right">{bookingData.departure} → {bookingData.arrival}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">승객 정보</span>
-                <span className="font-medium">{bookingData.passengers}명, 짐 {bookingData.luggage}개</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">연락처</span>
-                <span className="font-medium">{bookingData.customer.name} ({bookingData.customer.phone})</span>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex justify-between mb-2">
-                <span>예약 수수료</span>
-                <span>${priceData.reservation_fee}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span>서비스 요금</span>
-                <span>${priceData.local_payment_fee}</span>
-              </div>
-              {bookingData.vehicle !== 'standard' && (
-                <div className="flex justify-between mb-2">
-                  <span>차량 업그레이드</span>
-                  <span>
-                    ${bookingData.vehicle === 'xl' ? priceData.vehicle_upgrades.xl_fee : priceData.vehicle_upgrades.premium_fee}
-                  </span>
-                </div>
-              )}
-              <div className="border-t border-gray-200 pt-2 mt-2">
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>총 결제 금액</span>
-                  <span className="text-yellow-600">${calculateTotalPrice()}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-        <div className="max-w-md mx-auto flex gap-3">
-          {currentStep > 1 && (
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setCurrentStep(prev => prev - 1)}
-              disabled={loading}
-            >
-              이전
-            </Button>
-          )}
-          <Button
-            className={currentStep === 1 ? "w-full" : "flex-1"}
-            onClick={nextStep}
-            disabled={loading || !isStepValid}
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                처리 중...
-              </div>
-            ) : (
-              currentStep === totalSteps ? '예약 완료' : '다음'
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 검색 페이지 컴포넌트
-const SearchPage = () => {
-  const { setCurrentPage, api } = useContext(AppContext);
-  const [searchType, setSearchType] = useState('number'); // 'number' | 'phone'
-  const [searchValue, setSearchValue] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState([]);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [showDetail, setShowDetail] = useState(false);
-
-  const handleSearch = async () => {
-    if (!searchValue.trim()) {
-      alert('검색어를 입력해주세요.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let response;
-      if (searchType === 'number') {
-        // 예약번호로 검색
-        response = await api.getBookingByNumber(searchValue.trim());
-        setResults(response.success ? [response.data] : []);
-      } else {
-        // 전화번호로 검색 (실제로는 별도 API 필요)
-        // 데모용 데이터
-        if (searchValue.includes('1234')) {
-          setResults([
-            {
-              booking_number: 'YR241201DEMO',
-              status: 'confirmed',
-              service_type: '공항 택시',
-              departure: 'JFK 공항',
-              arrival: '맨하탄 미드타운',
-              date: '2024년 12월 5일',
-              time: '오후 2:00',
-              customer_name: '김철수',
-              customer_phone: searchValue,
-              total_amount: 95,
-              created_at: '2024.12.01'
-            }
-          ]);
-        } else {
-          setResults([]);
-        }
-      }
-    } catch (error) {
-      console.error('검색 오류:', error);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const statusMap = {
-      'pending': { text: '예약 대기', class: 'bg-yellow-100 text-yellow-800' },
-      'confirmed': { text: '예약 확정', class: 'bg-blue-100 text-blue-800' },
-      'driver_assigned': { text: '기사 배정', class: 'bg-green-100 text-green-800' },
-      'completed': { text: '완료', class: 'bg-gray-100 text-gray-800' },
-      'cancelled': { text: '취소됨', class: 'bg-red-100 text-red-800' }
-    };
-    
-    const statusInfo = statusMap[status] || statusMap['pending'];
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusInfo.class}`}>
-        {statusInfo.text}
-      </span>
-    );
-  };
-
-  const openDetail = (booking) => {
-    setSelectedBooking(booking);
-    setShowDetail(true);
-  };
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <h1 className="text-lg font-semibold">예약 조회</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* 검색 탭 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-md mx-auto flex">
-          <button
-            className={`flex-1 py-4 text-center font-medium border-b-2 transition-colors ${
-              searchType === 'number' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500'
-            }`}
-            onClick={() => setSearchType('number')}
-          >
-            예약번호
-          </button>
-          <button
-            className={`flex-1 py-4 text-center font-medium border-b-2 transition-colors ${
-              searchType === 'phone' 
-                ? 'border-blue-500 text-blue-600' 
-                : 'border-transparent text-gray-500'
-            }`}
-            onClick={() => setSearchType('phone')}
-          >
-            전화번호
-          </button>
-        </div>
-      </div>
-      
-      <div className="max-w-md mx-auto p-4">
-        <Card className="p-6 mb-6">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-4">🔍</div>
-            <h2 className="text-lg font-semibold mb-2">예약 내역을 조회하세요</h2>
-            <p className="text-gray-600">
-              {searchType === 'number' 
-                ? '예약번호를 입력해주세요' 
-                : '예약 시 등록한 전화번호를 입력해주세요'
-              }
-            </p>
-          </div>
-          
-          <Input
-            icon={searchType === 'number' ? Search : Phone}
-            placeholder={searchType === 'number' ? '예: YR241201ABCD' : '010-1234-5678'}
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="mb-4"
-          />
-          
-          <Button 
-            className="w-full"
-            onClick={handleSearch}
-            disabled={loading || !searchValue.trim()}
-          >
-            {loading ? '조회 중...' : '조회하기'}
-          </Button>
-        </Card>
-
-        {/* 검색 결과 */}
-        {results.length > 0 && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">검색 결과</h3>
-              <span className="text-sm text-gray-600">{results.length}개</span>
-            </div>
-            
-            {results.map((booking, index) => (
-              <Card key={index} className="p-4" onClick={() => openDetail(booking)}>
-                <div className="flex justify-between items-start mb-3">
-                  <div className="font-semibold">{booking.booking_number}</div>
-                  {getStatusBadge(booking.status)}
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-gray-400" />
-                    <span>{booking.service_type}</span>
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">로딩 중...</p>
+              </div>
+            ) : stats.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-blue-600">
+                      {stats.reduce((sum, stat) => sum + stat.count, 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">총 노선 수</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{booking.departure} → {booking.arrival}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>{booking.date} {booking.time}</span>
+                  <div className="bg-white rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      ${Math.round(stats.reduce((sum, stat) => 
+                        sum + (stat.avgReservationFee + stat.avgLocalPaymentFee), 0) / stats.length)}
+                    </p>
+                    <p className="text-sm text-gray-600">평균 요금</p>
                   </div>
                 </div>
-                
-                <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">예약일: {booking.created_at}</span>
-                  <span className="font-bold text-yellow-600">${booking.total_amount}</span>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
 
-        {/* 빈 결과 */}
-        {!loading && results.length === 0 && searchValue && (
-          <Card className="p-8 text-center">
-            <div className="text-4xl mb-4">📭</div>
-            <h3 className="font-semibold mb-2">예약 내역이 없습니다</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              입력하신 정보로 등록된 예약이 없습니다.<br />
-              예약번호나 전화번호를 다시 확인해주세요.
-            </p>
-            <Button variant="outline" onClick={() => setSearchValue('')}>
-              다시 검색
-            </Button>
-          </Card>
-        )}
-
-        {/* 빠른 메뉴 */}
-        <Card className="p-6 mt-6">
-          <h3 className="font-semibold mb-4">빠른 메뉴</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => setCurrentPage('booking')}>
-              <div className="text-center">
-                <div className="text-xl mb-1">🚕</div>
-                <div className="text-sm">새 예약</div>
-              </div>
-            </Button>
-            <Button variant="outline" onClick={() => setSearchValue('YR241201DEMO')}>
-              <div className="text-center">
-                <div className="text-xl mb-1">📱</div>
-                <div className="text-sm">예약 문의</div>
-              </div>
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* 상세 모달 */}
-      {showDetail && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="bg-white w-full max-w-md mx-auto rounded-t-2xl p-6 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold">예약 상세 정보</h3>
-              <Button variant="secondary" size="sm" className="p-2" onClick={() => setShowDetail(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-600 mb-1">예약번호</div>
-                <div className="font-semibold">{selectedBooking.booking_number}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm text-gray-600 mb-1">상태</div>
-                <div>{getStatusBadge(selectedBooking.status)}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm text-gray-600 mb-1">서비스</div>
-                <div className="font-medium">{selectedBooking.service_type}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm text-gray-600 mb-1">이용 일시</div>
-                <div className="font-medium">{selectedBooking.date} {selectedBooking.time}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm text-gray-600 mb-1">경로</div>
-                <div className="font-medium">{selectedBooking.departure} → {selectedBooking.arrival}</div>
-              </div>
-              
-              <div>
-                <div className="text-sm text-gray-600 mb-1">예약자</div>
-                <div className="font-medium">{selectedBooking.customer_name} ({selectedBooking.customer_phone})</div>
-              </div>
-              
-              <div className="pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600 mb-1">총 요금</div>
-                <div className="text-xl font-bold text-yellow-600">${selectedBooking.total_amount}</div>
-              </div>
-            </div>
-            
-            <div className="mt-6 space-y-3">
-              <Button className="w-full" onClick={() => {
-                setShowDetail(false);
-                setCurrentPage('confirmation');
-              }}>
-                예약 확인서 보기
-              </Button>
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline">수정</Button>
-                <Button variant="outline">취소</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 대절 페이지
-const CharterPage = () => {
-  const { setCurrentPage, selectedRegion, regionData, api } = useContext(AppContext);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const totalSteps = 5;
-  
-  const [charterData, setCharterData] = useState({
-    purpose: null,
-    hours: 1,
-    waitingLocation: null,
-    date: '',
-    time: '',
-    passengers: 1,
-    luggage: 0,
-    vehicle: 'standard',
-    customer: {
-      name: '',
-      phone: '',
-      kakao: '',
-      requests: ''
-    }
-  });
-
-  useEffect(() => {
-    // 오늘 날짜와 시간 설정
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date();
-    now.setHours(now.getHours() + 1);
-    const timeString = now.toTimeString().slice(0, 5);
-    
-    setCharterData(prev => ({
-      ...prev,
-      date: today,
-      time: timeString
-    }));
-  }, []);
-
-  const updateCharterData = (field, value) => {
-    setCharterData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const calculateTotalPrice = () => {
-    let hourlyRate = 60; // 기본 시간당 요금
-    
-    if (charterData.vehicle === 'xl') {
-      hourlyRate = 70;
-    } else if (charterData.vehicle === 'premium') {
-      hourlyRate = 85;
-    }
-    
-    return hourlyRate * charterData.hours + 30; // 예약비 $30 포함
-  };
-
-  const validateStep = (step) => {
-    switch (step) {
-      case 1:
-        return charterData.purpose;
-      case 2:
-        return charterData.hours > 0 && charterData.waitingLocation;
-      case 3:
-        return charterData.date && charterData.time;
-      case 4:
-        return charterData.customer.name && charterData.customer.phone;
-      case 5:
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      completeCharter();
-    }
-  };
-
-  const completeCharter = async () => {
-    setLoading(true);
-    try {
-      const charterRequest = {
-        customer_info: {
-          name: charterData.customer.name,
-          phone: charterData.customer.phone,
-          kakao_id: charterData.customer.kakao || ''
-        },
-        service_info: {
-          type: 'charter',
-          region: selectedRegion
-        },
-        trip_details: {
-          departure: {
-            location: charterData.waitingLocation,
-            datetime: new Date(`${charterData.date}T${charterData.time}`)
-          },
-          arrival: {
-            location: charterData.waitingLocation
-          }
-        },
-        charter_info: {
-          hours: charterData.hours,
-          purpose: charterData.purpose,
-          waiting_location: charterData.waitingLocation,
-          special_requests: charterData.customer.requests,
-          total_amount: calculateTotalPrice()
-        },
-        vehicles: [{
-          type: charterData.vehicle,
-          passengers: charterData.passengers,
-          luggage: charterData.luggage
-        }],
-        passenger_info: {
-          total_passengers: charterData.passengers,
-          total_luggage: charterData.luggage
-        }
-      };
-
-      // 시뮬레이션 (실제로는 API 호출)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert(`대절 예약이 완료되었습니다!\n예약번호: CH${Date.now().toString().slice(-6)}\n총 요금: ${calculateTotalPrice()}`);
-      setCurrentPage('home');
-    } catch (error) {
-      alert('대절 예약 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const progress = (currentStep / totalSteps) * 100;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="secondary" size="sm" className="p-2" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <h1 className="text-lg font-semibold">택시 대절</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* 진행률 */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-600">{currentStep}단계 / {totalSteps}단계</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-md mx-auto p-4 pb-32">
-        {/* 1단계: 대절 용도 선택 */}
-        {currentStep === 1 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-2">대절 용도를 선택해주세요</h3>
-            <p className="text-gray-600 mb-6">용도에 맞는 최적의 서비스를 제공해드립니다</p>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { id: 'tourism', icon: '🗽', title: '관광', desc: '여행지 투어' },
-                { id: 'shopping', icon: '🛍', title: '쇼핑', desc: '쇼핑몰 이동' },
-                { id: 'business', icon: '💼', title: '업무', desc: '업무 미팅' },
-                { id: 'medical', icon: '🏥', title: '병원', desc: '병원 방문' },
-                { id: 'event', icon: '🎉', title: '행사', desc: '특별 행사' },
-                { id: 'other', icon: '📋', title: '기타', desc: '기타 용도' }
-              ].map((purpose) => (
-                <div
-                  key={purpose.id}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all text-center ${
-                    charterData.purpose === purpose.id 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => updateCharterData('purpose', purpose.id)}
-                >
-                  <div className="text-2xl mb-2">{purpose.icon}</div>
-                  <div className="font-semibold text-sm mb-1">{purpose.title}</div>
-                  <div className="text-xs text-gray-600">{purpose.desc}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* 2단계: 시간 및 대기 장소 선택 */}
-        {currentStep === 2 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-2">대절 시간을 선택해주세요</h3>
-            <p className="text-gray-600 mb-6">시간당 $60, 최소 1시간부터 이용 가능합니다</p>
-            
-            <div className="mb-6">
-              <h4 className="font-medium mb-3">대절 시간</h4>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {[1, 2, 3, 4, 6, 8, 10, 12].map((hour) => (
-                  <button
-                    key={hour}
-                    className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                      charterData.hours === hour 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => updateCharterData('hours', hour)}
-                  >
-                    {hour}시간
-                  </button>
-                ))}
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <span className="text-sm">직접 입력:</span>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="24"
-                    value={charterData.hours}
-                    onChange={(e) => updateCharterData('hours', parseInt(e.target.value) || 1)}
-                    className="w-20 text-center"
-                  />
-                  <span className="text-sm text-gray-600">시간</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-3">대기 장소</h4>
-              <div className="space-y-2">
-                {(regionData[selectedRegion]?.places || []).slice(0, 4).map((location, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      charterData.waitingLocation === location.name_kor 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => updateCharterData('waitingLocation', location.name_kor)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <div>
-                        <div className="font-medium text-sm">{location.name_kor}</div>
-                        <div className="text-xs text-gray-600">{location.name_eng}</div>
+                <div className="space-y-3">
+                  {stats.map((stat, index) => (
+                    <div key={index} className="bg-white rounded-xl p-4">
+                      <h4 className="font-semibold mb-3">{stat._id} 지역</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-gray-600">노선 수:</span>
+                          <span className="font-medium ml-2">{stat.count}개</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">평균 예약비:</span>
+                          <span className="font-medium ml-2">${Math.round(stat.avgReservationFee)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">공항 출발:</span>
+                          <span className="font-medium ml-2">{stat.airportDepartures}개</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">공항 도착:</span>
+                          <span className="font-medium ml-2">{stat.airportArrivals}개</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* 3단계: 날짜/시간 및 승객 정보 */}
-        {currentStep === 3 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">시작 일정을 설정해주세요</h3>
-            
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <Input
-                type="date"
-                label="시작 날짜"
-                value={charterData.date}
-                onChange={(e) => updateCharterData('date', e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-              />
-              <Input
-                type="time"
-                label="시작 시간"
-                value={charterData.time}
-                onChange={(e) => updateCharterData('time', e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4 text-gray-400" />
-                  <span className="font-medium text-sm">승객 수</span>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => charterData.passengers > 1 && updateCharterData('passengers', charterData.passengers - 1)}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="font-semibold">{charterData.passengers}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => updateCharterData('passengers', charterData.passengers + 1)}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Luggage className="w-4 h-4 text-gray-400" />
-                  <span className="font-medium text-sm">짐 개수</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => charterData.luggage > 0 && updateCharterData('luggage', charterData.luggage - 1)}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </Button>
-                  <span className="font-semibold">{charterData.luggage}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-8 h-8 p-0 rounded-full"
-                    onClick={() => updateCharterData('luggage', charterData.luggage + 1)}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <h4 className="font-medium mb-4">차량 선택</h4>
-            <div className="space-y-3">
-              {[
-                { type: 'standard', name: '일반 차량', price: '시간당 $60', desc: '최대 4명 승차 가능한 일반 승용차', icon: '🚗' },
-                { type: 'xl', name: '대형 차량', price: '시간당 $70', desc: '최대 6명 승차 가능한 SUV 또는 밴', icon: '🚙' },
-                { type: 'premium', name: '프리미엄 차량', price: '시간당 $85', desc: '최대 4명 승차 가능한 고급 승용차', icon: '🏆' }
-              ].map((vehicle) => (
-                <div
-                  key={vehicle.type}
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                    charterData.vehicle === vehicle.type 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                  onClick={() => updateCharterData('vehicle', vehicle.type)}
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">{vehicle.icon}</span>
-                      <span className="font-semibold">{vehicle.name}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-blue-600">{vehicle.price}</span>
-                  </div>
-                  <div className="text-sm text-gray-600 ml-8">{vehicle.desc}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* 4단계: 고객 정보 */}
-        {currentStep === 4 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">연락처 정보를 입력해주세요</h3>
-            
-            <div className="space-y-4">
-              <Input
-                label="이름 *"
-                placeholder="성함을 입력해주세요"
-                value={charterData.customer.name}
-                onChange={(e) => setCharterData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, name: e.target.value }
-                }))}
-              />
-              <Input
-                label="전화번호 *"
-                type="tel"
-                placeholder="010-1234-5678"
-                value={charterData.customer.phone}
-                onChange={(e) => setCharterData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, phone: e.target.value }
-                }))}
-              />
-              <Input
-                label="카카오톡 ID (선택사항)"
-                placeholder="원활한 소통을 위해 입력해주세요"
-                value={charterData.customer.kakao}
-                onChange={(e) => setCharterData(prev => ({
-                  ...prev,
-                  customer: { ...prev.customer, kakao: e.target.value }
-                }))}
-              />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  요청사항 (선택사항)
-                </label>
-                <textarea
-                  className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                  rows="3"
-                  placeholder="특별한 요청사항이 있으시면 알려주세요"
-                  value={charterData.customer.requests}
-                  onChange={(e) => setCharterData(prev => ({
-                    ...prev,
-                    customer: { ...prev.customer, requests: e.target.value }
-                  }))}
-                />
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* 5단계: 예약 확인 */}
-        {currentStep === 5 && (
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-6">대절 내용을 확인해주세요</h3>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">용도</span>
-                <span className="font-medium">
-                  {{
-                    'tourism': '관광',
-                    'shopping': '쇼핑', 
-                    'business': '업무',
-                    'medical': '병원',
-                    'event': '행사',
-                    'other': '기타'
-                  }[charterData.purpose]}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">대기 장소</span>
-                <span className="font-medium text-right max-w-[60%]">{charterData.waitingLocation}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">시작 일시</span>
-                <span className="font-medium">{charterData.date} {charterData.time}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">대절 시간</span>
-                <span className="font-medium">{charterData.hours}시간</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">승객 정보</span>
-                <span className="font-medium">{charterData.passengers}명, 짐 {charterData.luggage}개</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">선택 차량</span>
-                <span className="font-medium">
-                  {{
-                    'standard': '일반 차량',
-                    'xl': '대형 차량',
-                    'premium': '프리미엄 차량'
-                  }[charterData.vehicle]}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">연락처</span>
-                <span className="font-medium text-right">{charterData.customer.name} ({charterData.customer.phone})</span>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex justify-between font-semibold text-lg">
-                <span>총 결제 금액</span>
-                <span className="text-yellow-600">${calculateTotalPrice()}</span>
-              </div>
-              <div className="text-sm text-gray-600 mt-1">
-                예약비 $30 + 시간당 요금 포함
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-        <div className="max-w-md mx-auto flex gap-3">
-          {currentStep > 1 && (
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setCurrentStep(prev => prev - 1)}
-              disabled={loading}
-            >
-              이전
-            </Button>
-          )}
-          <Button
-            className={currentStep === 1 ? "w-full" : "flex-1"}
-            onClick={nextStep}
-            disabled={loading || !validateStep(currentStep)}
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                처리 중...
-              </div>
+              </>
             ) : (
-              currentStep === totalSteps ? '대절 완료' : '다음'
+              <div className="text-center py-8">
+                <p className="text-gray-500">통계 데이터가 없습니다</p>
+              </div>
             )}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ConfirmationPage = () => {
-  const { setCurrentPage, bookingData } = useContext(AppContext);
-  const [copied, setCopied] = useState(false);
-
-  const copyBookingNumber = async () => {
-    const bookingNumber = bookingData.bookingNumber || 'YR241201DEMO';
-    
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(bookingNumber);
-      } else {
-        // 폴백 방법
-        const textArea = document.createElement('textarea');
-        textArea.value = bookingNumber;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
-      
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('복사 실패:', error);
-    }
-  };
-
-  const formatDateTime = (date, time) => {
-    if (!date || !time) return '-';
-    
-    const dateObj = new Date(date);
-    const dateStr = dateObj.toLocaleDateString('ko-KR', { 
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric',
-      weekday: 'short'
-    });
-    
-    return `${dateStr} ${time}`;
-  };
-
-  const getVehicleName = (type) => {
-    const vehicles = {
-      'standard': '일반 택시',
-      'xl': '대형 택시',
-      'premium': '프리미엄 택시'
-    };
-    return vehicles[type] || '일반 택시';
-  };
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <h1 className="text-lg font-semibold text-center">예약 완료</h1>
-        </div>
-      </header>
-
-      <div className="max-w-md mx-auto">
-        {/* 성공 헤더 */}
-        <div className="bg-white p-8 text-center">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <CheckCircle className="w-10 h-10 text-white" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">예약이 완료되었습니다!</h2>
-          <p className="text-gray-600 mb-8">곧 기사님이 배정될 예정입니다</p>
-        </div>
-
-        <div className="px-4 space-y-4">
-          {/* 예약번호 카드 */}
-          <Card className="p-6 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black">
-            <div className="text-center">
-              <div className="text-sm opacity-80 mb-2">예약번호</div>
-              <div className="text-2xl font-bold tracking-wide mb-4">
-                {bookingData.bookingNumber || 'YR241201DEMO'}
-              </div>
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={copyBookingNumber}
-                className="bg-black bg-opacity-10 hover:bg-opacity-20 border-0"
-              >
-                {copied ? '✅ 복사완료!' : '📋 복사하기'}
-              </Button>
-            </div>
-          </Card>
-
-          {/* 예약 상세 정보 */}
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                🚕
-              </div>
-              <div>
-                <h3 className="font-semibold">예약 정보</h3>
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">예약 확인중</span>
-              </div>
-            </div>
-            
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">서비스</span>
-                <span className="font-medium">
-                  {bookingData.serviceType === 'airport' ? '공항 택시' : '일반 택시'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">일시</span>
-                <span className="font-medium">
-                  {formatDateTime(bookingData.datetime?.date, bookingData.datetime?.time)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">출발</span>
-                <span className="font-medium text-right max-w-[60%]">
-                  {bookingData.departure?.split(' - ')[0] || bookingData.departure}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">도착</span>
-                <span className="font-medium text-right max-w-[60%]">
-                  {bookingData.arrival?.split(' - ')[0] || bookingData.arrival}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">승객/짐</span>
-                <span className="font-medium">{bookingData.passengers}명 / 짐 {bookingData.luggage}개</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">차량</span>
-                <span className="font-medium">{getVehicleName(bookingData.vehicle)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">예약자</span>
-                <span className="font-medium text-right">
-                  {bookingData.customer?.name} ({bookingData.customer?.phone})
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* 결제 정보 */}
-          <Card className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                💰
-              </div>
-              <h3 className="font-semibold">결제 정보</h3>
-            </div>
-            
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">예약비</span>
-                <span>$20</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">서비스비</span>
-                <span>$75</span>
-              </div>
-              {bookingData.vehicle !== 'standard' && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">차량 업그레이드</span>
-                  <span>
-                    ${bookingData.vehicle === 'xl' ? '10' : '25'}
-                  </span>
-                </div>
-              )}
-              <div className="border-t border-gray-200 pt-2 mt-2">
-                <div className="flex justify-between font-semibold text-base">
-                  <span>총 결제금액</span>
-                  <span className="text-yellow-600">${bookingData.totalAmount || '95'}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* 안내사항 */}
-          <Card className="p-6 bg-blue-50">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <span>📢</span>
-              이용 안내
-            </h4>
-            <div className="space-y-2 text-sm text-gray-700">
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>예약 확정 후 기사님 정보를 문자로 안내드립니다</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>출발 1시간 전까지 취소 가능합니다</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>기사님께 예약번호를 알려주세요</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>늦으실 경우 미리 연락 부탁드립니다</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* 고객센터 */}
-          <Card className="p-6">
-            <h4 className="font-semibold mb-4 text-center">도움이 필요하신가요?</h4>
-            <div className="grid grid-cols-3 gap-3">
-              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <span className="text-xl mb-2">📞</span>
-                <span className="text-xs text-gray-600">전화하기</span>
-              </button>
-              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <span className="text-xl mb-2">💬</span>
-                <span className="text-xs text-gray-600">카카오톡</span>
-              </button>
-              <button className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                <span className="text-xl mb-2">✉️</span>
-                <span className="text-xs text-gray-600">이메일</span>
-              </button>
-            </div>
-          </Card>
-        </div>
-
-        {/* 하단 버튼 */}
-        <div className="p-4 space-y-3 pb-8">
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => setCurrentPage('search')}>
-              예약 내역
-            </Button>
-            <Button onClick={() => setCurrentPage('home')}>
-              홈으로
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
