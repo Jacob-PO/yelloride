@@ -1621,8 +1621,10 @@ const HomePage = () => {
         sort: 'priority'
       });
       
-      if (response.success) {
+      if (response.success && Array.isArray(response.data)) {
         setPopularRoutes(response.data);
+      } else {
+        setPopularRoutes([]);
       }
     } catch (error) {
       console.error('인기 노선 로드 오류:', error);
@@ -1660,7 +1662,7 @@ const HomePage = () => {
         'kor'
       );
       
-      if (response.success && response.data.length > 0) {
+      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
         setSearchResults(response.data);
         showToast(`${response.data.length}개의 경로를 찾았습니다.`, 'success');
       } else {
