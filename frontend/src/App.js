@@ -142,6 +142,10 @@ class YellorideAPI {
     return this.requestWithRetry('/taxi/regions');
   }
 
+  async getAllTaxiItems() {
+    return this.requestWithRetry('/taxi/all');
+  }
+
   // 예약 관련 API
   async createBooking(bookingData) {
     return this.requestWithRetry('/bookings', {
@@ -1299,6 +1303,8 @@ const HomePage = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [popularRoutes, setPopularRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [allRoutes, setAllRoutes] = useState([]);
+  const [loadingAllRoutes, setLoadingAllRoutes] = useState(false);
 
   const currentRegionData = regionData[selectedRegion] || { airports: [], places: [] };
 
@@ -1328,6 +1334,10 @@ const HomePage = () => {
   }, [selectedRegion, loadingRegions]);
 
   useEffect(() => {
+    loadAllRoutes();
+  }, []);
+
+  useEffect(() => {
     if (showLocationModal && locationSelectType === 'arrival' && bookingData.departure) {
       fetchArrivals();
     }
@@ -1354,6 +1364,23 @@ const HomePage = () => {
       }
     } catch (error) {
       console.error('인기 노선 로드 오류:', error);
+    }
+  };
+
+  const loadAllRoutes = async () => {
+    try {
+      setLoadingAllRoutes(true);
+      const response = await api.getAllTaxiItems();
+      if (response.success && Array.isArray(response.data)) {
+        setAllRoutes(response.data);
+      } else {
+        setAllRoutes([]);
+      }
+    } catch (error) {
+      console.error('전체 노선 로드 오류:', error);
+      setAllRoutes([]);
+    } finally {
+      setLoadingAllRoutes(false);
     }
   };
 
@@ -1634,8 +1661,34 @@ const HomePage = () => {
                 </div>
               ))}
             </div>
-          </Card>
-        )}
+        </Card>
+      )}
+
+        {/* 모든 노선 */}
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4">모든 노선</h3>
+          {loadingAllRoutes ? (
+            <p className="text-sm text-gray-500">모든 노선을 불러오는 중...</p>
+          ) : allRoutes.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {allRoutes.map((route, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between text-sm border-b pb-1"
+                >
+                  <span>
+                    {route.departure_kor} → {route.arrival_kor}
+                  </span>
+                  <span className="text-blue-600 font-medium">
+                    ${route.reservation_fee + route.local_payment_fee}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">노선 데이터가 없습니다.</p>
+          )}
+        </Card>
 
         {/* 서비스 메뉴 */}
         <div>
