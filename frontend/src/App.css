@@ -1,0 +1,339 @@
+/* App.css - YelloRide 스타일링 */
+
+/* 애니메이션 정의 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 컨테이너 스타일 */
+.App {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.container {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* 헤더 스타일 */
+header {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: white;
+}
+
+/* 네비게이션 애니메이션 */
+.navbar {
+  transition: all 0.3s ease;
+}
+
+.navbar-brand {
+  font-weight: bold;
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.navbar-brand:hover {
+  transform: scale(1.05);
+}
+
+/* 카드 스타일 */
+.card {
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* 버튼 스타일 */
+.btn {
+  transition: all 0.3s ease;
+  border-radius: 25px;
+  padding: 0.5rem 1.5rem;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+/* 폼 스타일 */
+.form-control, .form-select {
+  border-radius: 20px;
+  border: 1px solid #ced4da;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+/* 리스트 아이템 애니메이션 */
+.list-group-item {
+  animation: slideIn 0.5s ease-in-out;
+  transition: all 0.3s ease;
+  border: none;
+  margin-bottom: 0.5rem;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.list-group-item:hover {
+  background-color: #f8f9fa;
+  transform: translateX(5px);
+}
+
+/* 택시 카드 스타일 */
+.taxi-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.taxi-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: rotate(45deg);
+  transition: all 0.6s;
+  opacity: 0;
+}
+
+.taxi-card:hover::before {
+  animation: shine 0.6s ease-in-out;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* 상태 배지 */
+.badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.875rem;
+}
+
+.badge-available {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge-busy {
+  background-color: #dc3545;
+  color: white;
+}
+
+.badge-offline {
+  background-color: #6c757d;
+  color: white;
+}
+
+/* 로딩 스피너 */
+.spinner-border {
+  animation: pulse 1.5s infinite;
+}
+
+/* 알림 메시지 */
+.alert {
+  animation: slideIn 0.5s ease-in-out;
+  border-radius: 10px;
+  border: none;
+}
+
+/* 지도 컨테이너 */
+.map-container {
+  height: 400px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 1.2rem;
+  }
+  
+  .card {
+    margin-bottom: 1rem;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-control, .form-select {
+    font-size: 16px; /* iOS 줌 방지 */
+  }
+  
+  .map-container {
+    height: 300px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container {
+    padding: 0 15px;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  .list-group-item {
+    padding: 0.75rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .App {
+    background-color: #1a1a1a;
+    color: #f8f9fa;
+  }
+  
+  .card {
+    background-color: #2a2a2a;
+    color: #f8f9fa;
+  }
+  
+  .form-control, .form-select {
+    background-color: #3a3a3a;
+    color: #f8f9fa;
+    border-color: #4a4a4a;
+  }
+  
+  .list-group-item {
+    background-color: #2a2a2a;
+    color: #f8f9fa;
+  }
+  
+  header {
+    background-color: #2a2a2a;
+  }
+  
+  .navbar {
+    background-color: #2a2a2a !important;
+  }
+  
+  .navbar-brand, .nav-link {
+    color: #f8f9fa !important;
+  }
+}
+
+/* 프린트 스타일 */
+@media print {
+  .navbar, .btn, .form-control {
+    display: none;
+  }
+  
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}
+
+/* 접근성 향상 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 포커스 스타일 */
+*:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
