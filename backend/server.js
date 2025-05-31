@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
 const { errorHandler } = require('./utils/errorHandler');
@@ -39,16 +40,23 @@ app.use('/api/', limiter);
 
 // 정적 파일 제공
 app.use('/uploads', express.static('uploads'));
+app.use(express.static(path.join(__dirname, '../frontend/public')));
 
 // API 라우트
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/taxis', require('./routes/taxis'));
+// Alias route to handle requests to /api/taxi
+app.use('/api/taxi', require('./routes/taxis'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/routes', require('./routes/routes'));
 
 // 헬스 체크 엔드포인트
 app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server is running' });
+});
+// health check endpoint under /api for backward compatibility
+app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 

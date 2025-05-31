@@ -49,7 +49,6 @@ const userSchema = new mongoose.Schema({
 });
 
 // 인덱스
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 
 // 가상 필드
