@@ -53,8 +53,8 @@ app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/taxis', require('./routes/taxis'));
-// Alias route to handle requests to /api/taxi
-app.use('/api/taxi', require('./routes/taxis'));
+// 택시 노선 조회를 위한 엔드포인트
+app.use('/api/taxi', require('./routes/taxiRoutes'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/routes', require('./routes/routes'));
 
