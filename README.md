@@ -132,7 +132,7 @@ npm run seed:taxi   # 택시 데이터만 생성
 npm run import:json -- --clear   # JSON 파일로 모든 택시 노선 갱신
 ```
 
-백엔드 서버를 처음 실행하면 데이터베이스에 노선이 없는 경우 `backend/data/taxiitems_full.json` 파일을 읽어 자동으로 채워 넣습니다.
+백엔드 서버를 처음 실행하면 데이터베이스에 노선이 없는 경우 `backend/data/taxiitems_full.json` 파일을 읽어 `taxi_item` 컬렉션에 자동으로 데이터를 채워 넣습니다.
 
 ### 프로덕션 빌드
 ```bash
@@ -200,6 +200,8 @@ yelloride/
 |--------|------|------|
 | PORT | 서버 포트 | 5001 |
 | MONGODB_URI | MongoDB 연결 URI | mongodb://localhost:27017/yelloride |
+| DB_NAME | 데이터베이스 이름 | yelloride |
+| TAXI_COLLECTION | 택시 노선 컬렉션 | taxi_item |
 | JWT_SECRET | JWT 비밀 키 | your-secret-key |
 | JWT_EXPIRE | JWT 만료 시간 | 30d |
 | NODE_ENV | 실행 환경 | development/production |

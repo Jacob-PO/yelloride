@@ -58,7 +58,7 @@ const taxiItemSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  collection: 'taxiitems'
+  collection: process.env.TAXI_COLLECTION || 'taxi_item'
 });
 
 // 인덱스 설정
