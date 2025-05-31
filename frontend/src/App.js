@@ -1244,18 +1244,24 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
 
   const currentRegionData = regionData[selectedRegion];
-  const airportsList = (currentRegionData?.airports || []).filter((loc) => {
-    if (locationSelectType === 'departure') {
-      return !availableDepartures || availableDepartures.includes(loc.name_kor);
+
+  const computeLocationLists = () => {
+    const list =
+      locationSelectType === 'departure' ? availableDepartures : availableArrivals;
+
+    if (Array.isArray(list) && list.length > 0) {
+      const airports = list.filter(l => l.is_airport === 'Y' || l.is_airport === true);
+      const places = list.filter(l => !(l.is_airport === 'Y' || l.is_airport === true));
+      return { airportsList: airports, placesList: places };
     }
-    return !availableArrivals || availableArrivals.includes(loc.name_kor);
-  });
-  const placesList = (currentRegionData?.places || []).filter((loc) => {
-    if (locationSelectType === 'departure') {
-      return !availableDepartures || availableDepartures.includes(loc.name_kor);
-    }
-    return !availableArrivals || availableArrivals.includes(loc.name_kor);
-  });
+
+    return {
+      airportsList: currentRegionData?.airports || [],
+      placesList: currentRegionData?.places || []
+    };
+  };
+
+  const { airportsList, placesList } = computeLocationLists();
 
   useEffect(() => {
     loadPopularRoutes();
