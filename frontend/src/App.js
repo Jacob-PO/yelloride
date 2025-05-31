@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import { Calendar, Phone, MapPin, Clock, Users, Luggage, Car, CreditCard, CheckCircle, ArrowLeft, Search, Plus, Minus, X } from 'lucide-react';
 
 // 전역 상태 관리
@@ -167,6 +167,42 @@ class YellorideAPI {
     });
   }
 }
+
+// 지역별 공항/장소 데이터는 상수로 분리해 렌더 간 재생성을 방지
+const REGION_DATA = {
+  NY: {
+    name: '뉴욕',
+    desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
+    airports: [
+      { name_kor: 'NY 존에프케네디 공항', name_eng: 'JFK Airport', is_airport: true },
+      { name_kor: 'NY 라과디아 공항', name_eng: 'LGA Airport', is_airport: true },
+      { name_kor: 'NJ 뉴와크 공항', name_eng: 'EWR Airport', is_airport: true }
+    ],
+    places: [
+      { name_kor: 'NY 맨해튼 미드타운', name_eng: 'Manhattan Midtown' },
+      { name_kor: 'NY 맨해튼 다운타운', name_eng: 'Manhattan Downtown' },
+      { name_kor: 'NY 브루클린', name_eng: 'Brooklyn' },
+      { name_kor: 'NY 플러싱', name_eng: 'Flushing' },
+      { name_kor: 'NY 자메이카', name_eng: 'Jamaica' }
+    ]
+  },
+  CA: {
+    name: '캘리포니아',
+    desc: 'LA, 샌프란시스코, LAX/SFO 공항',
+    airports: [
+      { name_kor: 'LAX 국제공항', name_eng: 'LAX Airport', is_airport: true },
+      { name_kor: 'SFO 국제공항', name_eng: 'SFO Airport', is_airport: true },
+      { name_kor: '버뱅크 공항', name_eng: 'Burbank Airport', is_airport: true }
+    ],
+    places: [
+      { name_kor: 'LA 다운타운', name_eng: 'Downtown LA' },
+      { name_kor: 'LA 할리우드', name_eng: 'Hollywood' },
+      { name_kor: 'LA 베벌리힐스', name_eng: 'Beverly Hills' },
+      { name_kor: 'SF 유니언 스퀘어', name_eng: 'Union Square' },
+      { name_kor: 'SF 피셔맨스 워프', name_eng: "Fisherman's Wharf" }
+    ]
+  }
+};
 
 // 접근성 및 SEO 개선 훅
 const useAccessibility = () => {
@@ -421,9 +457,9 @@ const EmptyState = ({ title, message, action, icon = '📭' }) => {
 
 // 연결 상태 표시 컴포넌트
 const ConnectionStatus = () => {
+  const { api } = useContext(AppContext);
   const isOnline = useOnlineStatus();
   const [serverStatus, setServerStatus] = useState(true);
-  const api = new YellorideAPI();
 
   useEffect(() => {
     const checkServerStatus = async () => {
@@ -494,7 +530,7 @@ class ErrorBoundary extends React.Component {
               예상치 못한 오류가 발생했습니다. 페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
             </p>
             
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
               <details className="text-left mb-4 p-3 bg-gray-100 rounded text-sm">
                 <summary className="cursor-pointer font-semibold">개발자 정보</summary>
                 <pre className="mt-2 overflow-auto">
@@ -2012,7 +2048,7 @@ const YellorideApp = () => {
     totalAmount: 0
   });
 
-  const api = new YellorideAPI();
+  const api = useMemo(() => new YellorideAPI(), []);
   usePerformance();
 
   useEffect(() => {
@@ -2035,49 +2071,22 @@ const YellorideApp = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPage]);
 
-  const regionData = {
-    NY: {
-      name: '뉴욕',
-      desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
-      airports: [
-        { name_kor: 'NY 존에프케네디 공항', name_eng: 'JFK Airport', is_airport: true },
-        { name_kor: 'NY 라과디아 공항', name_eng: 'LGA Airport', is_airport: true },
-        { name_kor: 'NJ 뉴와크 공항', name_eng: 'EWR Airport', is_airport: true }
-      ],
-      places: [
-        { name_kor: 'NY 맨해튼 미드타운', name_eng: 'Manhattan Midtown' },
-        { name_kor: 'NY 맨해튼 다운타운', name_eng: 'Manhattan Downtown' },
-        { name_kor: 'NY 브루클린', name_eng: 'Brooklyn' },
-        { name_kor: 'NY 플러싱', name_eng: 'Flushing' },
-        { name_kor: 'NY 자메이카', name_eng: 'Jamaica' }
-      ]
-    },
-    CA: {
-      name: '캘리포니아',
-      desc: 'LA, 샌프란시스코, LAX/SFO 공항',
-      airports: [
-        { name_kor: 'LAX 국제공항', name_eng: 'LAX Airport', is_airport: true },
-        { name_kor: 'SFO 국제공항', name_eng: 'SFO Airport', is_airport: true },
-        { name_kor: '버뱅크 공항', name_eng: 'Burbank Airport', is_airport: true }
-      ],
-      places: [
-        { name_kor: 'LA 다운타운', name_eng: 'Downtown LA' },
-        { name_kor: 'LA 할리우드', name_eng: 'Hollywood' },
-        { name_kor: 'LA 베벌리힐스', name_eng: 'Beverly Hills' },
-        { name_kor: 'SF 유니언 스퀘어', name_eng: 'Union Square' },
-        { name_kor: 'SF 피셔맨스 워프', name_eng: 'Fisherman\'s Wharf' }
-      ]
-    }
-  };
+  const regionData = REGION_DATA;
 
-  const contextValue = {
-    currentPage, setCurrentPage,
-    selectedRegion, setSelectedRegion,
-    bookingData, setBookingData,
-    regionData,
-    api,
-    showToast
-  };
+  const contextValue = useMemo(
+    () => ({
+      currentPage,
+      setCurrentPage,
+      selectedRegion,
+      setSelectedRegion,
+      bookingData,
+      setBookingData,
+      regionData,
+      api,
+      showToast
+    }),
+    [currentPage, selectedRegion, bookingData, regionData, api, showToast]
+  );
 
   return (
     <AppContext.Provider value={contextValue}>
