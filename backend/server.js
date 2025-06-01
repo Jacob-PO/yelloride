@@ -182,6 +182,22 @@ app.get('/api/taxi/all', async (req, res) => {
   }
 });
 
+// 택시 아이템 대량 업로드
+app.post('/api/taxi/bulk', async (req, res) => {
+  try {
+    const items = req.body.items;
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: 'Invalid items' });
+    }
+
+    const result = await TaxiItem.insertMany(items, { ordered: false });
+    res.json({ success: true, count: result.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // 경로 검색
 app.get('/api/taxi/route', async (req, res) => {
   try {
