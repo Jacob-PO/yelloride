@@ -625,9 +625,9 @@ const AdminPage = () => {
                     className="w-full p-2 border border-gray-300 rounded-lg"
                   >
                     <option value="">전체 지역</option>
-                    <option value="NY">뉴욕</option>
-                    <option value="CA">캘리포니아</option>
-                    <option value="NJ">뉴저지</option>
+                    {Object.entries(regionData).map(([code, data]) => (
+                      <option key={code} value={code}>{data.name}</option>
+                    ))}
                   </select>
                 </div>
                 
@@ -1047,27 +1047,7 @@ const YellorideApp = () => {
       console.error('지역 데이터 로드 오류:', error);
       showToast('지역 정보를 불러오는데 실패했습니다.', 'error');
       
-      // 폴백 데이터 사용
-      setRegionData({
-        NY: {
-          name: '뉴욕',
-          desc: '맨해튼, 브루클린, 퀸즈, JFK/LGA 공항',
-          airports: [],
-          places: []
-        },
-        LA: {
-          name: '로스앤젤레스',
-          desc: 'LA 지역, LAX 공항',
-          airports: [],
-          places: []
-        },
-        CA: {
-          name: '캘리포니아',
-          desc: 'LA, 샌프란시스코, LAX/SFO 공항',
-          airports: [],
-          places: []
-        }
-      });
+      setRegionData({});
     } finally {
       setLoadingRegions(false);
     }
