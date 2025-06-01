@@ -369,6 +369,27 @@ app.get('/api/bookings/:id', async (req, res) => {
   }
 });
 
+// 예약 조회 (검색)
+// GET /api/bookings/search?booking_number=XXXXXX
+app.get('/api/bookings/search', async (req, res) => {
+  try {
+    const { booking_number } = req.query;
+    console.log('예약 조회 요청:', booking_number);
+
+    const booking = await Booking.findOne({ booking_number: booking_number?.toUpperCase() });
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: '예약을 찾을 수 없습니다.' });
+    }
+
+    console.log('찾은 예약:', booking);
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    console.error('예약 조회 에러:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // 예약 조회 (예약 번호)
 app.get('/api/bookings/number/:bookingNumber', async (req, res) => {
   try {

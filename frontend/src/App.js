@@ -171,6 +171,10 @@ class YellorideAPI {
     return this.requestWithRetry(`/bookings/number/${bookingNumber}`);
   }
 
+  async searchBooking(bookingNumber) {
+    return this.requestWithRetry(`/bookings/search?booking_number=${bookingNumber}`);
+  }
+
   async updateBooking(bookingId, updateData) {
     return this.requestWithRetry(`/bookings/${bookingId}`, {
       method: 'PATCH',
@@ -2388,6 +2392,18 @@ const SearchPage = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '날짜 정보 없음';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const handleSearch = async () => {
     if (!searchValue.trim()) {
       alert('검색어를 입력해주세요.');
@@ -2399,7 +2415,7 @@ const SearchPage = () => {
       let response;
       if (searchType === 'number') {
         // 예약번호로 검색
-        response = await api.getBookingByNumber(searchValue.trim());
+        response = await api.searchBooking(searchValue.trim());
         setResults(response.success ? [response.data] : []);
       } else {
         // 전화번호로 검색 (실제로는 별도 API 필요)
@@ -2542,21 +2558,23 @@ const SearchPage = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Car className="w-4 h-4 text-gray-400" />
-                    <span>{booking.service_type}</span>
+                    <span>{booking.service_info?.type}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-gray-400" />
-                    <span>{booking.departure} → {booking.arrival}</span>
+                    <span>
+                      {booking.trip_details?.departure?.location || '출발지 정보 없음'} → {booking.trip_details?.arrival?.location || '도착지 정보 없음'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>{booking.date} {booking.time}</span>
+                    <span>{formatDate(booking.trip_details?.departure?.datetime)}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">예약일: {booking.created_at}</span>
-                  <span className="font-bold text-yellow-600">${booking.total_amount}</span>
+                  <span className="text-xs text-gray-500">예약일: {formatDate(booking.createdAt)}</span>
+                  <span className="font-bold text-yellow-600">${booking.pricing?.total_amount || 0}</span>
                 </div>
               </Card>
             ))}
@@ -2622,27 +2640,27 @@ const SearchPage = () => {
               
               <div>
                 <div className="text-sm text-gray-600 mb-1">서비스</div>
-                <div className="font-medium">{selectedBooking.service_type}</div>
+                <div className="font-medium">{selectedBooking.service_info?.type}</div>
               </div>
-              
+
               <div>
                 <div className="text-sm text-gray-600 mb-1">이용 일시</div>
-                <div className="font-medium">{selectedBooking.date} {selectedBooking.time}</div>
+                <div className="font-medium">{formatDate(selectedBooking.trip_details?.departure?.datetime)}</div>
               </div>
-              
+
               <div>
                 <div className="text-sm text-gray-600 mb-1">경로</div>
-                <div className="font-medium">{selectedBooking.departure} → {selectedBooking.arrival}</div>
+                <div className="font-medium">{selectedBooking.trip_details?.departure?.location} → {selectedBooking.trip_details?.arrival?.location}</div>
               </div>
-              
+
               <div>
                 <div className="text-sm text-gray-600 mb-1">예약자</div>
-                <div className="font-medium">{selectedBooking.customer_name} ({selectedBooking.customer_phone})</div>
+                <div className="font-medium">{selectedBooking.customer_info?.name} ({selectedBooking.customer_info?.phone})</div>
               </div>
-              
+
               <div className="pt-4 border-t border-gray-200">
                 <div className="text-sm text-gray-600 mb-1">총 요금</div>
-                <div className="text-xl font-bold text-yellow-600">${selectedBooking.total_amount}</div>
+                <div className="text-xl font-bold text-yellow-600">${selectedBooking.pricing?.total_amount || 0}</div>
               </div>
             </div>
             
