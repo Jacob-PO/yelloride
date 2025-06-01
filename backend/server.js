@@ -9,12 +9,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (req.method === 'POST' && req.path === '/api/bookings') {
+    console.log('예약 요청 바디:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/yelloride';
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error', err));
 
 // MongoDB connection event logging
+mongoose.connection.on("connected", () => {
+  console.log("✅ MongoDB 연결 성공");
+});
 mongoose.connection.on('error', err => {
   console.error('MongoDB 연결 에러:', err);
 });
@@ -38,62 +49,33 @@ const taxiItemSchema = new mongoose.Schema({
 
 const TaxiItem = mongoose.model('TaxiItem', taxiItemSchema);
 
-// 예약 스키마 및 모델
-const bookingSchema = new mongoose.Schema({
-  booking_number: { type: String, unique: true },
-  customer_info: {
-    name: String,
-    phone: String,
-    kakao_id: String
-  },
-  service_info: {
-    type: String,
-    region: String
-  },
-  trip_details: {
-    departure: {
-      location: String,
-      datetime: Date
-    },
-    arrival: {
-      location: String
-    }
-  },
-  vehicles: [
-    {
-      type: String,
-      passengers: Number,
-      luggage: Number
-    }
-  ],
-  passenger_info: {
-    total_passengers: Number,
-    total_luggage: Number
-  },
-  flight_info: {
-    flight_number: String,
-    terminal: String
-  },
-  pricing: {
-    reservation_fee: Number,
-    service_fee: Number,
-    vehicle_upgrade_fee: Number,
-    total_amount: Number
-  },
-  status: { type: String, default: 'pending' },
-  createdAt: { type: Date, default: Date.now }
-}, { collection: 'bookings' });
+// 예약 모델
+const Booking = require('./models/Booking');
 
-const Booking = mongoose.model('Booking', bookingSchema);
+app.get('/api/health', async (req, res) => {
+  try {
+    await mongoose.connection.db.admin().ping();
 
-app.get('/api/health', (req, res) => {
-  const mongoose = require('mongoose');
-  res.json({
-    status: 'ok',
-    mongodb: mongoose.connection.readyState,
-    mongodbStatus: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
-    nodeVersion: process.version
-  });
+    res.json({
+      status: 'healthy',
+      mongodb: {
+        connected: mongoose.connection.readyState === 1,
+        state: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
+        host: mongoose.connection.host,
+        database: mongoose.connection.name
+      },
+      server: {
+        nodeVersion: process.version,
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: err.message
+    });
+  }
 });
 
 // MongoDB connection status check
@@ -137,22 +119,50 @@ app.get('/api/taxi', async (req, res) => {
   }
 });
 
-// 간단한 예약 생성 테스트용 엔드포인트
+// 간단한 예약 생성 테스트 엔드포인트
 app.post('/api/bookings/test', async (req, res) => {
   try {
-    const mongoose = require('mongoose');
-    const crypto = require('crypto');
-    const testId = crypto.randomUUID();
+    const Booking = require('./models/Booking');
+
+    const testData = {
+      booking_number: 'TEST' + Date.now(),
+      customer_info: {
+        name: 'Test User',
+        phone: '010-1234-5678'
+      },
+      service_info: {
+        type: 'airport',
+        region: 'NY'
+      },
+      trip_details: {
+        departure: {
+          location: 'Test Location',
+          datetime: new Date()
+        }
+      },
+      vehicles: [{
+        type: 'standard',
+        passengers: 1,
+        luggage: 0
+      }],
+      pricing: {
+        total_amount: 100
+      }
+    };
+
+    const booking = new Booking(testData);
+    await booking.save();
 
     res.json({
       success: true,
-      cryptoTest: testId,
-      mongoStatus: mongoose.connection.readyState
+      message: '테스트 예약 생성 성공',
+      id: booking._id
     });
   } catch (err) {
     res.status(500).json({
       success: false,
-      error: err.message
+      error: err.message,
+      validation: err.errors
     });
   }
 });
@@ -291,107 +301,123 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
-  console.log('POST /api/bookings 요청됨');
-  console.log('요청 바디:', req.body);
+  console.log('\n========== 예약 생성 시작 ==========');
+  console.log('시간:', new Date().toISOString());
+  console.log('요청 데이터:', JSON.stringify(req.body, null, 2));
 
   try {
+    if (mongoose.connection.readyState !== 1) {
+      console.error('❌ MongoDB 연결 안됨. readyState:', mongoose.connection.readyState);
+      return res.status(500).json({
+        success: false,
+        message: 'Database not connected',
+        mongoState: mongoose.connection.readyState
+      });
+    }
+
     const data = req.body;
 
-    // 각 단계별 로깅 추가
-    console.log('1. 데이터 검증 시작');
+    const requiredFields = [
+      'customer_info.name',
+      'customer_info.phone',
+      'service_info.type',
+      'service_info.region',
+      'trip_details.departure.location',
+      'trip_details.departure.datetime',
+      'vehicles',
+      'pricing.total_amount'
+    ];
 
-    // vehicles 검증
-    console.log('2. vehicles 타입:', typeof data.vehicles);
-    console.log('   vehicles 내용:', data.vehicles);
-
-    // vehicles 타입 검증
-    if (typeof data.vehicles === 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid data format: vehicles must be an array, not a string',
-        field: 'vehicles',
-        received: typeof data.vehicles
-      });
-    }
-
-    // 필수 필드 검증
-    if (!Array.isArray(data.vehicles) || data.vehicles.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'vehicles array cannot be empty',
-        field: 'vehicles'
-      });
-    }
-
-    // 각 vehicle 객체 검증
-    for (let i = 0; i < data.vehicles.length; i++) {
-      const vehicle = data.vehicles[i];
-      if (!vehicle.type || typeof vehicle.passengers !== 'number' || typeof vehicle.luggage !== 'number') {
+    for (const field of requiredFields) {
+      const value = field.split('.').reduce((obj, key) => obj?.[key], data);
+      if (!value) {
+        console.error(`❌ 필수 필드 누락: ${field}`);
         return res.status(400).json({
           success: false,
-          message: `Invalid vehicle data at index ${i}`,
-          field: `vehicles[${i}]`
+          message: `Missing required field: ${field}`
         });
       }
     }
 
-    // 예약 번호 생성
-    if (!data.booking_number) {
-      const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
-      data.booking_number = 'YR' + uniquePart;
+    if (!Array.isArray(data.vehicles)) {
+      if (typeof data.vehicles === 'string') {
+        try {
+          data.vehicles = JSON.parse(data.vehicles);
+          console.log('✅ vehicles 문자열을 배열로 변환');
+        } catch (e) {
+          console.error('❌ vehicles 파싱 실패:', e);
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid vehicles format'
+          });
+        }
+      }
     }
 
-    // datetime 변환 로깅
     console.log('datetime 변환 전:', data.trip_details?.departure?.datetime);
     if (data.trip_details?.departure?.datetime) {
       data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
       console.log('datetime 변환 후:', data.trip_details.departure.datetime);
     }
 
-    console.log('Booking 생성 전 최종 데이터:', data);
+    if (!data.booking_number) {
+      try {
+        const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+        data.booking_number = 'YR' + uniquePart;
+        console.log('✅ 예약 번호 생성:', data.booking_number);
+      } catch (cryptoErr) {
+        console.error('❌ crypto 에러:', cryptoErr);
+        data.booking_number = 'YR' + Date.now().toString(36).toUpperCase();
+      }
+    }
 
+    console.log('Booking 모델 생성 시도...');
     const booking = new Booking(data);
-    console.log('Booking 객체 생성 성공');
+    console.log('✅ Booking 인스턴스 생성 성공');
 
-    await booking.save();
-    console.log('MongoDB 저장 성공');
+    console.log('MongoDB 저장 시도...');
+    const savedBooking = await booking.save();
+    console.log('✅ 예약 저장 성공:', savedBooking._id);
 
-    res.json({ success: true, data: booking });
+    res.json({
+      success: true,
+      data: savedBooking,
+      booking_number: savedBooking.booking_number
+    });
 
   } catch (err) {
-    console.error('❌❌❌ 예약 생성 실패 ❌❌❌');
+    console.error('\n❌❌❌ 예약 생성 실패 ❌❌❌');
     console.error('에러 타입:', err.name);
     console.error('에러 메시지:', err.message);
-    console.error('스택:', err.stack);
+    console.error('에러 스택:', err.stack);
 
-    // Mongoose validation 에러인 경우
     if (err.name === 'ValidationError') {
-      console.error('검증 실패 필드들:');
-      Object.keys(err.errors || {}).forEach(field => {
-        console.error(`  - ${field}: ${err.errors[field].message}`);
-      });
-
+      const errors = Object.values(err.errors || {}).map(e => ({
+        field: e.path,
+        message: e.message,
+        value: e.value
+      }));
+      console.error('검증 실패 상세:', errors);
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        errors: Object.values(err.errors || {}).map(e => e.message)
+        errors
       });
     }
 
-    // MongoDB 연결 에러
     if (err.name === 'MongoNetworkError' || err.name === 'MongooseServerSelectionError') {
-      console.error('MongoDB 연결 실패!');
       return res.status(500).json({
         success: false,
-        message: 'Database connection error'
+        message: 'Database connection error',
+        details: err.message
       });
     }
 
-    // 기타 에러 - 더 자세한 정보 제공
     res.status(500).json({
       success: false,
       message: err.message || 'Server error',
-      errorType: err.name
+      errorType: err.name,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 });
