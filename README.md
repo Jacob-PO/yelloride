@@ -2,6 +2,7 @@
 
 YelloRide는 사용자가 편리하게 택시를 예약하고, 운전자가 효율적으로 예약을 관리할 수 있는 웹 기반 택시 예약 플랫폼입니다.
 
+⚠️ 현재 백엔드는 간단한 Express 서버와 MongoDB(Mongoose)를 사용하여 구현됩니다.
 ## 📋 목차
 
 - [주요 기능](#주요-기능)
@@ -180,13 +181,8 @@ npm start
 ```
 yelloride/
 ├── backend/
-│   ├── config/         # 설정 파일
-│   ├── models/         # 데이터베이스 모델
-│   ├── routes/         # API 라우트
-│   ├── middleware/     # 미들웨어
-│   ├── utils/          # 유틸리티 함수
-│   ├── scripts/        # 스크립트 파일
-│   └── uploads/        # 업로드 파일 저장
+│   ├── server.js      # 간단한 Express 서버
+│   └── package.json
 ├── frontend/
 │   ├── public/         # 정적 파일
 │   └── src/            # React 소스 코드
@@ -196,49 +192,11 @@ yelloride/
 ## 🔐 환경 변수
 
 ### Backend (.env)
-| 변수명 | 설명 | 예시 |
-|--------|------|------|
-| PORT | 서버 포트 | 5001 |
-| MONGODB_URI | MongoDB 연결 URI | mongodb://localhost:27017/yelloride |
-| DB_NAME | 데이터베이스 이름 | yelloride |
-| TAXI_COLLECTION | 택시 노선 컬렉션 | taxi_item |
-| JWT_SECRET | JWT 비밀 키 | your-secret-key |
-| JWT_EXPIRE | JWT 만료 시간 | 30d |
-| NODE_ENV | 실행 환경 | development/production |
-
-## 💾 데이터베이스 스키마
-
-### User
-- name: String (required)
-- email: String (required, unique)
-- password: String (required)
-- phone: String (required)
-- role: String (user/driver/admin)
-
-### Taxi
-- taxiNumber: String (required, unique)
-- driverName: String (required)
-- licenseNumber: String (required)
-- model: String
-- status: String (available/busy/offline)
-- currentLocation: GeoJSON Point
-
-### Booking
-- customer: ObjectId (ref: User)
-- taxi: ObjectId (ref: Taxi)
-- pickupLocation: String
-- dropoffLocation: String
-- pickupTime: Date
-- fare: Number
-- status: String (pending/confirmed/completed/cancelled)
-
-### Route
-- name: String
-- startPoint: Object (name, coordinates)
-- endPoint: Object (name, coordinates)
-- waypoints: Array
-- estimatedTime: Number
-- baseFare: Number
+다음과 같은 환경 변수가 필요합니다.
+```env
+PORT=5001
+MONGODB_URI=mongodb://localhost:27017/yelloride
+```
 
 ## 👨‍💻 개발자 가이드
 
