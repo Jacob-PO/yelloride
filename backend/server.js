@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -250,13 +251,18 @@ app.post('/api/bookings', async (req, res) => {
     const data = req.body;
     // 기본 예약 번호 생성
     if (!data.booking_number) {
-      data.booking_number = 'YR' + Date.now().toString().slice(-6);
+      // 생성 시 중복 가능성을 줄이기 위해 UUID 기반 번호 사용
+      const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+      data.booking_number = 'YR' + uniquePart;
     }
     const booking = new Booking(data);
     await booking.save();
     res.json({ success: true, data: booking });
   } catch (err) {
     console.error(err);
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Duplicate booking number' });
+    }
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
