@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage } from 'lucide-react';
 
 // 전역 상태 관리
@@ -225,8 +225,10 @@ const Toast = ({ message, type, onClose }) => {
 const useToast = () => {
   const [toasts, setToasts] = useState([]);
 
+  const toastId = useRef(0);
   const showToast = (message, type = 'info') => {
-    const id = Date.now();
+    toastId.current += 1;
+    const id = toastId.current;
     setToasts(prev => [...prev, { id, message, type }]);
   };
 
