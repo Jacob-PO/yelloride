@@ -146,8 +146,33 @@ class YellorideAPI {
     return this.requestWithRetry('/taxi/all');
   }
 
+  // 입력 데이터 검증
+  validateBookingData(bookingData) {
+    const errors = [];
+
+    if (!Array.isArray(bookingData.vehicles)) {
+      errors.push('vehicles must be an array');
+    }
+
+    if (!bookingData.customer_info?.name) {
+      errors.push('customer name is required');
+    }
+
+    if (!bookingData.customer_info?.phone) {
+      errors.push('customer phone is required');
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
   // 예약 관련 API
   async createBooking(bookingData) {
+    const validation = this.validateBookingData(bookingData);
+    if (!validation.isValid) {
+      console.error('Booking validation failed:', validation.errors);
+      return { success: false, message: validation.errors.join(', ') };
+    }
+
     return this.requestWithRetry('/bookings', {
       method: 'POST',
       body: JSON.stringify(bookingData)

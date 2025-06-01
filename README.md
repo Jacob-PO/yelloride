@@ -159,6 +159,36 @@ npm start
 - `PUT /api/routes/:id` - 노선 수정
 - `DELETE /api/routes/:id` - 노선 삭제
 
+## API 에러 응답 형식
+
+### 예약 생성 API 에러
+- **400 Bad Request**: 잘못된 데이터 형식
+```json
+{
+  "success": false,
+  "message": "Invalid data format: vehicles must be an array, not a string",
+  "field": "vehicles",
+  "received": "string"
+}
+```
+vehicles 필드 형식
+
+올바른 형식:
+```json
+{
+  "vehicles": [
+    { "type": "standard", "passengers": 1, "luggage": 0 }
+  ]
+}
+```
+
+잘못된 형식:
+```json
+{
+  "vehicles": "[{ \"type\": \"standard\", \"passengers\": 1, \"luggage\": 0 }]"
+}
+```
+
 ## 📁 프로젝트 구조
 
 ```

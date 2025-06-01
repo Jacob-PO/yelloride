@@ -250,31 +250,83 @@ app.get('/api/taxi/stats', async (req, res) => {
 app.post('/api/bookings', async (req, res) => {
   console.log('POST /api/bookings 요청됨');
   console.log('요청 바디:', req.body);
+
   try {
     const data = req.body;
-    // 배열이 문자열로 전달되었을 경우 파싱 처리
+
+    // vehicles 타입 검증
     if (typeof data.vehicles === 'string') {
-      try {
-        data.vehicles = JSON.parse(data.vehicles);
-      } catch (e) {
-        console.error('Invalid vehicles JSON string:', data.vehicles);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid data format: vehicles must be an array, not a string',
+        field: 'vehicles',
+        received: typeof data.vehicles
+      });
+    }
+
+    // 필수 필드 검증
+    if (!Array.isArray(data.vehicles) || data.vehicles.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'vehicles array cannot be empty',
+        field: 'vehicles'
+      });
+    }
+
+    // 각 vehicle 객체 검증
+    for (let i = 0; i < data.vehicles.length; i++) {
+      const vehicle = data.vehicles[i];
+      if (!vehicle.type || typeof vehicle.passengers !== 'number' || typeof vehicle.luggage !== 'number') {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid vehicle data at index ${i}`,
+          field: `vehicles[${i}]`
+        });
       }
     }
-    // 기본 예약 번호 생성
+
+    // 예약 번호 생성
     if (!data.booking_number) {
-      // 생성 시 중복 가능성을 줄이기 위해 UUID 기반 번호 사용
       const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
       data.booking_number = 'YR' + uniquePart;
     }
+
     const booking = new Booking(data);
     await booking.save();
     res.json({ success: true, data: booking });
+
   } catch (err) {
-    console.error(err);
-    if (err.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Duplicate booking number' });
+    console.error('Booking creation error:', err);
+    console.error('[BOOKING_ERROR]', {
+      timestamp: new Date().toISOString(),
+      error: err.message,
+      body: req.body,
+      headers: req.headers,
+      ip: req.ip
+    });
+
+    // Mongoose validation error 처리
+    if (err.name === 'ValidationError') {
+      const errors = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors
+      });
     }
-    res.status(500).json({ success: false, message: 'Server error' });
+
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Duplicate booking number'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
@@ -347,6 +399,10 @@ app.post('/api/bookings/:id/cancel', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
