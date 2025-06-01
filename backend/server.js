@@ -301,123 +301,40 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
-  console.log('\n========== 예약 생성 시작 ==========');
-  console.log('시간:', new Date().toISOString());
-  console.log('요청 데이터:', JSON.stringify(req.body, null, 2));
-
   try {
-    if (mongoose.connection.readyState !== 1) {
-      console.error('❌ MongoDB 연결 안됨. readyState:', mongoose.connection.readyState);
-      return res.status(500).json({
-        success: false,
-        message: 'Database not connected',
-        mongoState: mongoose.connection.readyState
-      });
-    }
+    console.log('예약 요청 받음:', new Date().toISOString());
 
     const data = req.body;
 
-    const requiredFields = [
-      'customer_info.name',
-      'customer_info.phone',
-      'service_info.type',
-      'service_info.region',
-      'trip_details.departure.location',
-      'trip_details.departure.datetime',
-      'vehicles',
-      'pricing.total_amount'
-    ];
-
-    for (const field of requiredFields) {
-      const value = field.split('.').reduce((obj, key) => obj?.[key], data);
-      if (!value) {
-        console.error(`❌ 필수 필드 누락: ${field}`);
-        return res.status(400).json({
-          success: false,
-          message: `Missing required field: ${field}`
-        });
-      }
-    }
-
-    if (!Array.isArray(data.vehicles)) {
-      if (typeof data.vehicles === 'string') {
-        try {
-          data.vehicles = JSON.parse(data.vehicles);
-          console.log('✅ vehicles 문자열을 배열로 변환');
-        } catch (e) {
-          console.error('❌ vehicles 파싱 실패:', e);
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid vehicles format'
-          });
-        }
-      }
-    }
-
-    console.log('datetime 변환 전:', data.trip_details?.departure?.datetime);
-    if (data.trip_details?.departure?.datetime) {
-      data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
-      console.log('datetime 변환 후:', data.trip_details.departure.datetime);
-    }
-
     if (!data.booking_number) {
       try {
-        const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
-        data.booking_number = 'YR' + uniquePart;
-        console.log('✅ 예약 번호 생성:', data.booking_number);
-      } catch (cryptoErr) {
-        console.error('❌ crypto 에러:', cryptoErr);
-        data.booking_number = 'YR' + Date.now().toString(36).toUpperCase();
+        data.booking_number = 'YR' + crypto.randomUUID().slice(0, 6).toUpperCase();
+      } catch (e) {
+        data.booking_number = 'YR' + Date.now().toString(36).toUpperCase().slice(-6);
       }
     }
 
-    console.log('Booking 모델 생성 시도...');
+    if (data.trip_details?.departure?.datetime) {
+      data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
+    }
+
     const booking = new Booking(data);
-    console.log('✅ Booking 인스턴스 생성 성공');
+    await booking.save();
 
-    console.log('MongoDB 저장 시도...');
-    const savedBooking = await booking.save();
-    console.log('✅ 예약 저장 성공:', savedBooking._id);
-
-    res.json({
-      success: true,
-      data: savedBooking,
-      booking_number: savedBooking.booking_number
-    });
+    res.json({ success: true, data: booking });
 
   } catch (err) {
-    console.error('\n❌❌❌ 예약 생성 실패 ❌❌❌');
-    console.error('에러 타입:', err.name);
-    console.error('에러 메시지:', err.message);
+    console.error('❌ 예약 생성 에러:', err);
     console.error('에러 스택:', err.stack);
-
-    if (err.name === 'ValidationError') {
-      const errors = Object.values(err.errors || {}).map(e => ({
-        field: e.path,
-        message: e.message,
-        value: e.value
-      }));
-      console.error('검증 실패 상세:', errors);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors
-      });
-    }
-
-    if (err.name === 'MongoNetworkError' || err.name === 'MongooseServerSelectionError') {
-      return res.status(500).json({
-        success: false,
-        message: 'Database connection error',
-        details: err.message
-      });
-    }
 
     res.status(500).json({
       success: false,
       message: err.message || 'Server error',
-      errorType: err.name,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      error: process.env.NODE_ENV === 'development' ? {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      } : undefined
     });
   }
 });
@@ -493,7 +410,9 @@ app.post('/api/bookings/:id/cancel', async (req, res) => {
 const PORT = process.env.PORT || 5001;
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ 서버가 포트 ${PORT}에서 실행 중입니다`);
+    console.log(`✅ MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/yelloride'}`);
+    console.log(`✅ 환경: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 
