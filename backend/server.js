@@ -252,6 +252,14 @@ app.post('/api/bookings', async (req, res) => {
   console.log('요청 바디:', req.body);
   try {
     const data = req.body;
+    // 배열이 문자열로 전달되었을 경우 파싱 처리
+    if (typeof data.vehicles === 'string') {
+      try {
+        data.vehicles = JSON.parse(data.vehicles);
+      } catch (e) {
+        console.error('Invalid vehicles JSON string:', data.vehicles);
+      }
+    }
     // 기본 예약 번호 생성
     if (!data.booking_number) {
       // 생성 시 중복 가능성을 줄이기 위해 UUID 기반 번호 사용
@@ -301,7 +309,15 @@ app.get('/api/bookings/number/:bookingNumber', async (req, res) => {
 // 예약 수정
 app.patch('/api/bookings/:id', async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = req.body;
+    if (typeof updateData.vehicles === 'string') {
+      try {
+        updateData.vehicles = JSON.parse(updateData.vehicles);
+      } catch (e) {
+        console.error('Invalid vehicles JSON string:', updateData.vehicles);
+      }
+    }
+    const booking = await Booking.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
