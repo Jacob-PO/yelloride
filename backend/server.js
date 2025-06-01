@@ -174,39 +174,51 @@ app.post('/api/bookings/test', async (req, res) => {
   }
 });
 
-// 엑셀 파일 업로드
+// 엑셀 또는 JSON 파일 업로드
 app.post('/api/taxi/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.file && !req.body.data) {
       return res.status(400).json({ success: false, message: '파일이 업로드되지 않았습니다' });
     }
 
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+    let items = [];
 
-    if (rows.length === 0) {
-      return res.status(400).json({ success: false, message: '엑셀 파일이 비어 있습니다' });
+    if (req.file) {
+      if (req.file.mimetype === 'application/json') {
+        items = JSON.parse(req.file.buffer.toString());
+      } else {
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+        if (rows.length === 0) {
+          return res.status(400).json({ success: false, message: '엑셀 파일이 비어 있습니다' });
+        }
+        items = rows.map(r => ({
+          region: r.region || r['지역'] || '',
+          departure_kor: r.departure_kor || r['departure_kor'] || r['출발지'] || '',
+          departure_eng: r.departure_eng || r['departure_eng'] || '',
+          departure_is_airport: r.departure_is_airport || r['departure_is_airport'] || r['출발지공항'] || '',
+          arrival_kor: r.arrival_kor || r['arrival_kor'] || r['도착지'] || '',
+          arrival_eng: r.arrival_eng || r['arrival_eng'] || '',
+          arrival_is_airport: r.arrival_is_airport || r['arrival_is_airport'] || r['도착지공항'] || '',
+          reservation_fee: Number(r.reservation_fee || r['reservation_fee'] || r['예약료'] || 0),
+          local_payment_fee: Number(r.local_payment_fee || r['local_payment_fee'] || r['현지료'] || 0),
+          priority: Number(r.priority || r['priority'] || 99)
+        }));
+      }
+    } else {
+      items = Array.isArray(req.body.data) ? req.body.data : JSON.parse(req.body.data);
     }
 
-    const items = rows.map(r => ({
-      region: r.region || r['지역'] || '',
-      departure_kor: r.departure_kor || r['departure_kor'] || r['출발지'] || '',
-      departure_eng: r.departure_eng || r['departure_eng'] || '',
-      departure_is_airport: r.departure_is_airport || r['departure_is_airport'] || r['출발지공항'] || '',
-      arrival_kor: r.arrival_kor || r['arrival_kor'] || r['도착지'] || '',
-      arrival_eng: r.arrival_eng || r['arrival_eng'] || '',
-      arrival_is_airport: r.arrival_is_airport || r['arrival_is_airport'] || r['도착지공항'] || '',
-      reservation_fee: Number(r.reservation_fee || r['reservation_fee'] || r['예약료'] || 0),
-      local_payment_fee: Number(r.local_payment_fee || r['local_payment_fee'] || r['현지료'] || 0),
-      priority: Number(r.priority || r['priority'] || 99)
-    }));
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: '데이터가 비어 있습니다' });
+    }
 
     await TaxiItem.insertMany(items, { ordered: false });
 
     res.json({ success: true, inserted: items.length });
   } catch (err) {
-    console.error('엑셀 업로드 오류:', err);
+    console.error('업로드 오류:', err);
     res.status(500).json({ success: false, message: '업로드 실패', error: err.message });
   }
 });
