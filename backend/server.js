@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 require('dotenv').config();
 
+console.log('Loaded MONGODB_URI:', process.env.MONGODB_URI);
 const app = express();
 app.use(cors());
 app.use(express.json());
