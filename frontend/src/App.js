@@ -1286,17 +1286,18 @@ const HomePage = () => {
   };
 
   const setLocation = (location) => {
+    const locationValue = location.full_kor || location.name_kor || location;
     setBookingData(prev => ({
       ...prev,
-      [locationSelectType]: location.full_kor || location.name_kor || location
+      [locationSelectType]: locationValue
     }));
     setShowLocationModal(false);
 
     // 선택 완료 후 자동으로 경로 검색
     if (locationSelectType === 'arrival' && bookingData.departure) {
-      searchRoutes(bookingData.departure, location);
+      searchRoutes(bookingData.departure, locationValue);
     } else if (locationSelectType === 'departure' && bookingData.arrival) {
-      searchRoutes(location, bookingData.arrival);
+      searchRoutes(locationValue, bookingData.arrival);
     }
   };
 
