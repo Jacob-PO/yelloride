@@ -142,6 +142,7 @@ npm start
 - `POST /api/taxis` - 택시 등록 (관리자)
 - `PUT /api/taxis/:id` - 택시 정보 수정
 - `DELETE /api/taxis/:id` - 택시 삭제
+- `POST /api/taxi/upload` - 엑셀 또는 JSON 파일로 노선 데이터 업로드
 
 ### 예약 관련
 - `GET /api/bookings` - 예약 목록 조회

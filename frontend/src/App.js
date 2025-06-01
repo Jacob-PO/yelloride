@@ -147,6 +147,14 @@ class YellorideAPI {
     });
   }
 
+  async uploadTaxiJson(data) {
+    return this.requestWithRetry('/taxi/upload', {
+      method: 'POST',
+      body: JSON.stringify({ data }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   // 입력 데이터 검증
   validateBookingData(bookingData) {
     const errors = [];
@@ -778,12 +786,18 @@ const AdminPage = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
     setUploading(true);
     try {
-      const response = await api.uploadTaxiExcel(formData);
+      let response;
+      if (selectedFile.name.endsWith('.json')) {
+        const text = await selectedFile.text();
+        const data = JSON.parse(text);
+        response = await api.uploadTaxiJson(data);
+      } else {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        response = await api.uploadTaxiExcel(formData);
+      }
       if (response.success) {
         showToast('업로드가 완료되었습니다.', 'success');
         loadTaxiData();
