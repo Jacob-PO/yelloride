@@ -2,12 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const multer = require('multer');
+const XLSX = require('xlsx');
 require('dotenv').config();
 
 console.log('Loaded MONGODB_URI:', process.env.MONGODB_URI);
 const app = express();
 app.use(cors());
 app.use(express.json());
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -168,6 +171,43 @@ app.post('/api/bookings/test', async (req, res) => {
       error: err.message,
       validation: err.errors
     });
+  }
+});
+
+// 엑셀 파일 업로드
+app.post('/api/taxi/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '파일이 업로드되지 않았습니다' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: '엑셀 파일이 비어 있습니다' });
+    }
+
+    const items = rows.map(r => ({
+      region: r.region || r['지역'] || '',
+      departure_kor: r.departure_kor || r['departure_kor'] || r['출발지'] || '',
+      departure_eng: r.departure_eng || r['departure_eng'] || '',
+      departure_is_airport: r.departure_is_airport || r['departure_is_airport'] || r['출발지공항'] || '',
+      arrival_kor: r.arrival_kor || r['arrival_kor'] || r['도착지'] || '',
+      arrival_eng: r.arrival_eng || r['arrival_eng'] || '',
+      arrival_is_airport: r.arrival_is_airport || r['arrival_is_airport'] || r['도착지공항'] || '',
+      reservation_fee: Number(r.reservation_fee || r['reservation_fee'] || r['예약료'] || 0),
+      local_payment_fee: Number(r.local_payment_fee || r['local_payment_fee'] || r['현지료'] || 0),
+      priority: Number(r.priority || r['priority'] || 99)
+    }));
+
+    await TaxiItem.insertMany(items, { ordered: false });
+
+    res.json({ success: true, inserted: items.length });
+  } catch (err) {
+    console.error('엑셀 업로드 오류:', err);
+    res.status(500).json({ success: false, message: '업로드 실패', error: err.message });
   }
 });
 
