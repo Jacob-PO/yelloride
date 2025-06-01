@@ -183,10 +183,6 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-# Uploads
-uploads/*
-!uploads/.gitkeep
-
 # Database
 *.sqlite
 *.sqlite3

@@ -424,12 +424,10 @@ const ConnectionStatus = () => {
 // 관리자 페이지
 const AdminPage = () => {
   const { setCurrentPage, api, showToast } = useContext(AppContext);
-  const [activeTab, setActiveTab] = useState('upload');
+  const [activeTab, setActiveTab] = useState('data');
   const [taxiData, setTaxiData] = useState([]);
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [uploadFile, setUploadFile] = useState(null);
-  const [clearExisting, setClearExisting] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
   const [filters, setFilters] = useState({
     region: '',
@@ -438,49 +436,6 @@ const AdminPage = () => {
     arrival_is_airport: '',
     priceOnly: false
   });
-
-  const handleFileUpload = async () => {
-    if (!uploadFile) {
-      showToast('파일을 선택해주세요.', 'error');
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('clearExisting', clearExisting);
-
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:5001/api/taxi/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        showToast(data.message, 'success');
-        setUploadFile(null);
-        setClearExisting(false);
-        
-        // 업로드 후 데이터 탭이 활성화되어 있으면 새로고침
-        if (activeTab === 'data') {
-          loadTaxiData();
-        }
-        
-        // 통계도 새로고침
-        if (activeTab === 'stats') {
-          loadStats();
-        }
-      } else {
-        showToast(data.message || '업로드 실패', 'error');
-      }
-    } catch (error) {
-      showToast('서버 연결 실패: ' + error.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadTaxiData = async () => {
     setLoading(true);
@@ -634,7 +589,6 @@ const AdminPage = () => {
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex space-x-8">
             {[
-              { id: 'upload', label: '파일 업로드', icon: '📤' },
               { id: 'data', label: '데이터 조회', icon: '📊' },
               { id: 'stats', label: '통계', icon: '📈' }
             ].map((tab) => (
@@ -754,12 +708,7 @@ const AdminPage = () => {
               ) : taxiData.length === 0 ? (
                 <EmptyState
                   title="데이터가 없습니다"
-                  message="필터 조건을 변경하거나 새로운 데이터를 업로드해주세요."
-                  action={
-                    <Button onClick={() => setActiveTab('upload')} variant="primary">
-                      데이터 업로드
-                    </Button>
-                  }
+                  message="필터 조건을 변경하거나 새로운 데이터를 등록해주세요."
                 />
               ) : (
                 <div>
@@ -861,87 +810,6 @@ const AdminPage = () => {
           </div>
         )}
         
-        {/* 파일 업로드 탭 */}
-        {activeTab === 'upload' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4">엑셀 파일 업로드</h3>
-              
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-4 hover:border-blue-400 transition-colors">
-                <div className="text-4xl mb-4">📁</div>
-                <h4 className="text-lg font-medium mb-2">파일을 선택하세요</h4>
-                <p className="text-gray-600 mb-4">xlsx, xls 파일만 업로드 가능합니다 (최대 10MB)</p>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setUploadFile(e.target.files[0])}
-                  className="mb-4"
-                />
-                {uploadFile && (
-                  <p className="text-sm text-green-600">✓ 선택된 파일: {uploadFile.name} ({(uploadFile.size / 1024 / 1024).toFixed(2)}MB)</p>
-                )}
-              </div>
-
-              <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={clearExisting}
-                    onChange={(e) => setClearExisting(e.target.checked)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <strong>기존 데이터 모두 삭제하고 새로 업로드</strong>
-                    <br />
-                    <span className="text-gray-600">체크하면 기존의 모든 택시 노선 데이터가 삭제됩니다.</span>
-                  </span>
-                </label>
-              </div>
-
-              <Button 
-                onClick={handleFileUpload}
-                disabled={!uploadFile}
-                loading={loading}
-                className="w-full"
-              >
-                {loading ? '업로드 중...' : '업로드 시작'}
-              </Button>
-            </Card>
-
-            <Card className="p-6 bg-blue-50">
-              <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <span>📋</span>
-                엑셀 파일 형식 가이드
-              </h4>
-              <div className="text-sm space-y-3">
-                <div>
-                  <strong className="text-blue-800">필수 컬럼:</strong>
-                  <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                    <li>region (지역: NY, CA, NJ 등)</li>
-                    <li>departure_kor (출발지 한글명)</li>
-                    <li>departure_eng (출발지 영문명)</li>
-                    <li>departure_is_airport (출발지 공항 여부: Y 또는 N)</li>
-                    <li>arrival_kor (도착지 한글명)</li>
-                    <li>arrival_eng (도착지 영문명)</li>
-                    <li>arrival_is_airport (도착지 공항 여부: Y 또는 N)</li>
-                    <li>reservation_fee (예약료, 숫자)</li>
-                    <li>local_payment_fee (현지 지불료, 숫자)</li>
-                  </ul>
-                </div>
-                <div>
-                  <strong className="text-blue-800">선택 컬럼:</strong>
-                  <ul className="list-disc list-inside ml-4 mt-1">
-                    <li>priority (우선순위, 숫자 - 기본값: 99)</li>
-                  </ul>
-                </div>
-                <div className="bg-white p-3 rounded border-l-4 border-blue-500">
-                  <strong>예시:</strong><br />
-                  region: NY, departure_kor: NY 맨해튼 미드타운, departure_eng: Manhattan Midtown, departure_is_airport: N, ...
-                </div>
-              </div>
-            </Card>
-          </div>
-        )}
 
         {/* 통계 탭 */}
         {activeTab === 'stats' && (
@@ -959,12 +827,7 @@ const AdminPage = () => {
               ) : stats.length === 0 ? (
                 <EmptyState
                   title="통계 데이터가 없습니다"
-                  message="먼저 택시 노선 데이터를 업로드해주세요."
-                  action={
-                    <Button onClick={() => setActiveTab('upload')} variant="primary">
-                      데이터 업로드하기
-                    </Button>
-                  }
+                  message="먼저 택시 노선 데이터를 등록해주세요."
                   icon="📊"
                 />
               ) : (
