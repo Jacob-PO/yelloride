@@ -87,7 +87,13 @@ const bookingSchema = new mongoose.Schema({
 const Booking = mongoose.model('Booking', bookingSchema);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK' });
+  const mongoose = require('mongoose');
+  res.json({
+    status: 'ok',
+    mongodb: mongoose.connection.readyState,
+    mongodbStatus: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
+    nodeVersion: process.version
+  });
 });
 
 // MongoDB connection status check
@@ -134,28 +140,19 @@ app.get('/api/taxi', async (req, res) => {
 // 간단한 예약 생성 테스트용 엔드포인트
 app.post('/api/bookings/test', async (req, res) => {
   try {
-    const testBooking = new Booking({
-      booking_number: 'TEST' + Date.now(),
-      customer_info: {
-        name: 'Test',
-        phone: '010-1234-5678'
-      },
-      vehicles: [
-        {
-          type: 'standard',
-          passengers: 1,
-          luggage: 0
-        }
-      ]
-    });
+    const mongoose = require('mongoose');
+    const crypto = require('crypto');
+    const testId = crypto.randomUUID();
 
-    await testBooking.save();
-    res.json({ success: true, message: '테스트 예약 생성 성공' });
+    res.json({
+      success: true,
+      cryptoTest: testId,
+      mongoStatus: mongoose.connection.readyState
+    });
   } catch (err) {
     res.status(500).json({
       success: false,
-      error: err.message,
-      validation: err.errors
+      error: err.message
     });
   }
 });
@@ -294,9 +291,8 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
-  console.log('=== 예약 요청 받음 ===');
-  console.log('시간:', new Date().toISOString());
-  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('POST /api/bookings 요청됨');
+  console.log('요청 바디:', req.body);
 
   try {
     const data = req.body;
@@ -363,46 +359,39 @@ app.post('/api/bookings', async (req, res) => {
     res.json({ success: true, data: booking });
 
   } catch (err) {
-    console.error('❌ 예약 생성 실패');
+    console.error('❌❌❌ 예약 생성 실패 ❌❌❌');
     console.error('에러 타입:', err.name);
     console.error('에러 메시지:', err.message);
-    console.error('스택 트레이스:', err.stack);
+    console.error('스택:', err.stack);
 
-    console.error('[BOOKING_ERROR]', {
-      timestamp: new Date().toISOString(),
-      error: err.message,
-      body: req.body,
-      headers: req.headers,
-      ip: req.ip
-    });
-
-    // Mongoose validation error 처리
+    // Mongoose validation 에러인 경우
     if (err.name === 'ValidationError') {
-      console.error('검증 에러 상세:');
-      Object.keys(err.errors).forEach(field => {
+      console.error('검증 실패 필드들:');
+      Object.keys(err.errors || {}).forEach(field => {
         console.error(`  - ${field}: ${err.errors[field].message}`);
       });
 
-      const errors = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
-        errors: errors
+        errors: Object.values(err.errors || {}).map(e => e.message)
       });
     }
 
-    if (err.code === 11000) {
-      return res.status(409).json({
+    // MongoDB 연결 에러
+    if (err.name === 'MongoNetworkError' || err.name === 'MongooseServerSelectionError') {
+      console.error('MongoDB 연결 실패!');
+      return res.status(500).json({
         success: false,
-        message: 'Duplicate booking number'
+        message: 'Database connection error'
       });
     }
 
+    // 기타 에러 - 더 자세한 정보 제공
     res.status(500).json({
       success: false,
-      message: err.message,
-      errorName: err.name,
-      errorDetails: process.env.NODE_ENV === 'development' ? err : undefined
+      message: err.message || 'Server error',
+      errorType: err.name
     });
   }
 });
