@@ -15,14 +15,19 @@ class YellorideAPI {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const headers = {
+      'X-Client-Version': '1.0.0',
+      'X-Platform': 'web',
+      ...options.headers
+    };
+
+    if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const config = {
       timeout: this.timeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Client-Version': '1.0.0',
-        'X-Platform': 'web',
-        ...options.headers
-      },
+      headers,
       ...options
     };
 
@@ -132,6 +137,14 @@ class YellorideAPI {
 
   async getAllTaxiItems() {
     return this.requestWithRetry('/taxi/all');
+  }
+
+  async uploadTaxiExcel(formData) {
+    return this.requestWithRetry('/taxi/upload', {
+      method: 'POST',
+      body: formData,
+      headers: {}
+    });
   }
 
   // 입력 데이터 검증
@@ -659,6 +672,9 @@ const AdminPage = () => {
     arrival_is_airport: '',
     priceOnly: false
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const loadTaxiData = async () => {
     setLoading(true);
@@ -756,6 +772,33 @@ const AdminPage = () => {
     }
   };
 
+  const uploadExcel = async () => {
+    if (!selectedFile) {
+      showToast('업로드할 파일을 선택해주세요.', 'warning');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    setUploading(true);
+    try {
+      const response = await api.uploadTaxiExcel(formData);
+      if (response.success) {
+        showToast('업로드가 완료되었습니다.', 'success');
+        loadTaxiData();
+      } else {
+        showToast(response.message || '업로드 실패', 'error');
+      }
+    } catch (error) {
+      showToast(error.message || '업로드 실패', 'error');
+    } finally {
+      setUploading(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 })); // 필터 변경 시 첫 페이지로
@@ -844,6 +887,21 @@ const AdminPage = () => {
         {/* 데이터 조회 탭 */}
         {activeTab === 'data' && (
           <div className="space-y-6">
+            <Card className="p-6">
+              <h4 className="font-bold text-lg mb-6">엑셀 업로드</h4>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  ref={fileInputRef}
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="flex-1"
+                />
+                <Button onClick={uploadExcel} loading={uploading} icon={Upload}>
+                  업로드
+                </Button>
+              </div>
+            </Card>
             {/* 필터 섹션 */}
             <Card className="p-6">
               <h4 className="font-bold text-lg mb-6">필터 및 검색</h4>
