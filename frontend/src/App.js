@@ -1,4 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import './App.css';
 import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity, Camera, ShoppingBag } from 'lucide-react';
 
 // 전역 상태 관리
@@ -1388,65 +1389,6 @@ const YellorideApp = () => {
   return (
     <AppContext.Provider value={contextValue}>
       <div className="min-h-screen bg-gray-50">
-        <style jsx global>{`
-          @keyframes slide-in {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
-          }
-
-          .animate-slide-in {
-            animation: slide-in 0.3s ease-out;
-          }
-
-          /* 스크롤바 스타일링 */
-          ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-
-          ::-webkit-scrollbar-track {
-            background: #f3f4f6;
-          }
-
-          ::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
-          }
-
-          ::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-          }
-
-          /* 커스텀 셀렉트 스타일 */
-          select {
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            padding-right: 2.5rem;
-          }
-
-          /* 부드러운 페이지 전환 */
-          .page-transition {
-            animation: fadeIn 0.3s ease-out;
-          }
-
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}</style>
 
         {currentPage === 'home' && <HomePage />}
         {currentPage === 'booking' && <BookingPage />}
