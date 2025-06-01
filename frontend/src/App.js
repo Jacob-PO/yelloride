@@ -1011,7 +1011,9 @@ const YellorideApp = () => {
       terminal: ''
     },
     bookingNumber: '',
-    totalAmount: 0
+    totalAmount: 0,
+    priceData: null,
+    selectedRoute: null
   });
 
   const api = new YellorideAPI();
@@ -1330,19 +1332,20 @@ const HomePage = () => {
   const startBooking = (routeData = null) => {
     if (bookingData.departure && bookingData.arrival) {
       const isAirport = bookingData.departure.includes('공항') || bookingData.arrival.includes('공항');
-      
+
       setBookingData(prev => ({
         ...prev,
         serviceType: isAirport ? 'airport' : 'taxi',
         region: selectedRegion,
         ...(routeData && {
+          selectedRoute: routeData,
           priceData: {
             reservation_fee: routeData.reservation_fee,
             local_payment_fee: routeData.local_payment_fee
           }
         })
       }));
-      
+
       setCurrentPage('booking');
     }
   };
@@ -1786,8 +1789,20 @@ const BookingPage = () => {
       datetime: { ...prev.datetime, date: today }
     }));
 
-    // 경로 정보 및 가격 조회
-    loadRouteData();
+    if (bookingData.priceData) {
+      setPriceData({
+        reservation_fee: bookingData.priceData.reservation_fee,
+        local_payment_fee: bookingData.priceData.local_payment_fee,
+        vehicle_upgrades: { xl_fee: 10, premium_fee: 25 }
+      });
+    }
+
+    if (bookingData.selectedRoute) {
+      setRouteData(bookingData.selectedRoute);
+    } else {
+      // 경로 정보 및 가격 조회
+      loadRouteData();
+    }
   }, []);
 
   const loadRouteData = async () => {
@@ -1804,11 +1819,20 @@ const BookingPage = () => {
         if (response.success && response.data.length > 0) {
           setRouteData(response.data[0]);
           // 가격 정보 업데이트
-          setPriceData({
+          const fetchedPrice = {
             reservation_fee: response.data[0].reservation_fee || 20,
             local_payment_fee: response.data[0].local_payment_fee || 75,
             vehicle_upgrades: { xl_fee: 10, premium_fee: 25 }
-          });
+          };
+          setPriceData(fetchedPrice);
+          setBookingData(prev => ({
+            ...prev,
+            priceData: {
+              reservation_fee: fetchedPrice.reservation_fee,
+              local_payment_fee: fetchedPrice.local_payment_fee
+            },
+            selectedRoute: response.data[0]
+          }));
           showToast('경로 정보를 불러왔습니다.', 'success');
         }
       } catch (error) {
