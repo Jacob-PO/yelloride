@@ -146,6 +146,7 @@ npm start
 ### 예약 관련
 - `GET /api/bookings` - 예약 목록 조회
 - `GET /api/bookings/:id` - 특정 예약 조회
+- `GET /api/bookings/number/:bookingNumber` - 예약 번호로 조회
 - `POST /api/bookings` - 예약 생성
 - `PUT /api/bookings/:id` - 예약 수정
 - `PUT /api/bookings/:id/status` - 예약 상태 변경
