@@ -27,6 +27,54 @@ const taxiItemSchema = new mongoose.Schema({
 
 const TaxiItem = mongoose.model('TaxiItem', taxiItemSchema);
 
+// 예약 스키마 및 모델
+const bookingSchema = new mongoose.Schema({
+  booking_number: { type: String, unique: true },
+  customer_info: {
+    name: String,
+    phone: String,
+    kakao_id: String
+  },
+  service_info: {
+    type: String,
+    region: String
+  },
+  trip_details: {
+    departure: {
+      location: String,
+      datetime: Date
+    },
+    arrival: {
+      location: String
+    }
+  },
+  vehicles: [
+    {
+      type: String,
+      passengers: Number,
+      luggage: Number
+    }
+  ],
+  passenger_info: {
+    total_passengers: Number,
+    total_luggage: Number
+  },
+  flight_info: {
+    flight_number: String,
+    terminal: String
+  },
+  pricing: {
+    reservation_fee: Number,
+    service_fee: Number,
+    vehicle_upgrade_fee: Number,
+    total_amount: Number
+  },
+  status: { type: String, default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+}, { collection: 'bookings' });
+
+const Booking = mongoose.model('Booking', bookingSchema);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });
 });
@@ -188,6 +236,85 @@ app.get('/api/taxi/stats', async (req, res) => {
     ]);
     const total = regionStats.reduce((sum, r) => sum + r.count, 0);
     res.json({ success: true, data: { totalRoutes: total, regions: regionStats } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ----- 예약 API -----
+
+// 예약 생성
+app.post('/api/bookings', async (req, res) => {
+  try {
+    const data = req.body;
+    // 기본 예약 번호 생성
+    if (!data.booking_number) {
+      data.booking_number = 'YR' + Date.now().toString().slice(-6);
+    }
+    const booking = new Booking(data);
+    await booking.save();
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 조회 (ID)
+app.get('/api/bookings/:id', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 조회 (예약 번호)
+app.get('/api/bookings/number/:bookingNumber', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ booking_number: req.params.bookingNumber });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 수정
+app.patch('/api/bookings/:id', async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 취소
+app.post('/api/bookings/:id/cancel', async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled', cancel_reason: req.body.reason || '' },
+      { new: true }
+    );
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
