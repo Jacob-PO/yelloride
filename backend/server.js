@@ -1,99 +1,45 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
-const connectDB = require('./config/database');
-const logger = require('./utils/logger');
-const { errorHandler } = require('./utils/errorHandler');
-const TaxiItem = require('./models/TaxiItem');
+const fs = require('fs');
 
-// Express 앱 초기화
 const app = express();
-// Disable etag headers on responses to prevent 304 status issues
-app.disable('etag');
-
-
-async function startServer() {
-  await connectDB();
-
-
-// 보안 미들웨어
-app.use(helmet());
-
-// CORS 설정
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
-
-// Body parser
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-// Prevent caching for API responses
-app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
-  next();
-});
 
-// HTTP 로깅
-app.use(logger.httpLogger());
+const dataPath = path.join(__dirname, 'data', 'products.json');
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15분
-  max: 100, // 최대 100개 요청
-  message: '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'
-});
-app.use('/api/', limiter);
-
-// 정적 파일 제공
-app.use('/uploads', express.static('uploads'));
-app.use(express.static(path.join(__dirname, '../frontend/public')));
-
-// API 라우트
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/taxis', require('./routes/taxis'));
-// 택시 노선 조회를 위한 엔드포인트
-app.use('/api/taxi', require('./routes/taxiRoutes'));
-app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/routes', require('./routes/routes'));
-app.use('/api/products', require('./routes/products'));
-
-// 헬스 체크 엔드포인트
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
-// health check endpoint under /api for backward compatibility
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
-});
-
-// 404 핸들러
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: '요청하신 리소스를 찾을 수 없습니다.' 
-  });
-});
-
-// 에러 핸들러
-app.use(errorHandler);
-
-  // 서버 시작
-  const PORT = process.env.PORT || 5001;
-  const server = app.listen(PORT, () => {
-    logger.info(`Server is running on port ${PORT}`);
-    console.log(`Server is running on port ${PORT}`);
-  });
-
-  // 프로세스 종료 처리
-  process.on('unhandledRejection', (err) => {
-    logger.error('Unhandled Rejection:', { error: err.message });
-    server.close(() => process.exit(1));
-  });
+function loadProducts() {
+  try {
+    const json = fs.readFileSync(dataPath, 'utf-8');
+    return JSON.parse(json);
+  } catch {
+    return [];
+  }
 }
 
-startServer();
+function saveProducts(products) {
+  fs.writeFileSync(dataPath, JSON.stringify(products, null, 2));
+}
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
+app.get('/api/products', (req, res) => {
+  const products = loadProducts();
+  res.json({ success: true, data: products });
+});
+
+app.post('/api/products', (req, res) => {
+  const products = loadProducts();
+  const product = { id: Date.now(), ...req.body };
+  products.push(product);
+  saveProducts(products);
+  res.status(201).json({ success: true, data: product });
+});
+
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
