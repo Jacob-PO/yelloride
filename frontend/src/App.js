@@ -1299,17 +1299,18 @@ const HomePage = () => {
 
   const setLocation = (location) => {
     const locationValue = location.full_kor || location.name_kor || location;
-    setBookingData(prev => ({
-      ...prev,
-      [locationSelectType]: locationValue
-    }));
+    setBookingData(prev => {
+      const updated = { ...prev, [locationSelectType]: locationValue };
+      if (locationSelectType === 'departure') {
+        updated.arrival = null; // 출발지 변경 시 도착지 초기화
+      }
+      return updated;
+    });
     setShowLocationModal(false);
 
     // 선택 완료 후 자동으로 경로 검색
     if (locationSelectType === 'arrival' && bookingData.departure) {
       searchRoutes(bookingData.departure, locationValue);
-    } else if (locationSelectType === 'departure' && bookingData.arrival) {
-      searchRoutes(locationValue, bookingData.arrival);
     }
   };
 
@@ -1822,12 +1823,12 @@ const BookingPage = () => {
           'kor'
         );
         
-        if (response.success && response.data.length > 0) {
-          setRouteData(response.data[0]);
+        if (response.success && response.data) {
+          setRouteData(response.data);
           // 가격 정보 업데이트
           const fetchedPrice = {
-            reservation_fee: response.data[0].reservation_fee || 20,
-            local_payment_fee: response.data[0].local_payment_fee || 75,
+            reservation_fee: response.data.reservation_fee || 20,
+            local_payment_fee: response.data.local_payment_fee || 75,
             vehicle_upgrades: { xl_fee: 10, premium_fee: 25 }
           };
           setPriceData(fetchedPrice);
@@ -1837,7 +1838,7 @@ const BookingPage = () => {
               reservation_fee: fetchedPrice.reservation_fee,
               local_payment_fee: fetchedPrice.local_payment_fee
             },
-            selectedRoute: response.data[0]
+            selectedRoute: response.data
           }));
           showToast('경로 정보를 불러왔습니다.', 'success');
         }
