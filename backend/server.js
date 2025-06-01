@@ -248,11 +248,20 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
-  console.log('POST /api/bookings 요청됨');
-  console.log('요청 바디:', req.body);
+  console.log('=== 예약 요청 시작 ===');
+  console.log('요청 시간:', new Date().toISOString());
+  console.log('요청 헤더:', req.headers);
+  console.log('요청 바디:', JSON.stringify(req.body, null, 2));
 
   try {
     const data = req.body;
+
+    // 각 단계별 로깅 추가
+    console.log('1. 데이터 검증 시작');
+
+    // vehicles 검증
+    console.log('2. vehicles 타입:', typeof data.vehicles);
+    console.log('   vehicles 내용:', data.vehicles);
 
     // vehicles 타입 검증
     if (typeof data.vehicles === 'string') {
@@ -296,7 +305,11 @@ app.post('/api/bookings', async (req, res) => {
     res.json({ success: true, data: booking });
 
   } catch (err) {
-    console.error('Booking creation error:', err);
+    console.error('❌ 예약 생성 실패');
+    console.error('에러 타입:', err.name);
+    console.error('에러 메시지:', err.message);
+    console.error('스택 트레이스:', err.stack);
+
     console.error('[BOOKING_ERROR]', {
       timestamp: new Date().toISOString(),
       error: err.message,
@@ -307,6 +320,11 @@ app.post('/api/bookings', async (req, res) => {
 
     // Mongoose validation error 처리
     if (err.name === 'ValidationError') {
+      console.error('검증 에러 상세:');
+      Object.keys(err.errors).forEach(field => {
+        console.error(`  - ${field}: ${err.errors[field].message}`);
+      });
+
       const errors = Object.values(err.errors).map(e => e.message);
       return res.status(400).json({
         success: false,

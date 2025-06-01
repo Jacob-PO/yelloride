@@ -1984,6 +1984,9 @@ const BookingPage = () => {
   };
 
   const completeBooking = async () => {
+    console.log('=== 예약 요청 데이터 ===');
+    console.log('bookingData:', bookingData);
+    console.log('priceData:', priceData);
     if (!validateStep(currentStep)) {
       showToast('예약 정보를 다시 확인해주세요.', 'error');
       return;
@@ -2027,11 +2030,21 @@ const BookingPage = () => {
         pricing: {
           reservation_fee: priceData.reservation_fee,
           service_fee: priceData.local_payment_fee,
-          vehicle_upgrade_fee: bookingData.vehicle === 'xl' ? priceData.vehicle_upgrades.xl_fee : 
+          vehicle_upgrade_fee: bookingData.vehicle === 'xl' ? priceData.vehicle_upgrades.xl_fee :
                               bookingData.vehicle === 'premium' ? priceData.vehicle_upgrades.premium_fee : 0,
           total_amount: calculateTotalPrice()
         }
       };
+
+      // 요청 전 데이터 검증
+      console.log('전송할 예약 데이터:', JSON.stringify(bookingRequest, null, 2));
+
+      // vehicles 배열 확인
+      if (typeof bookingRequest.vehicles === 'string') {
+        console.error('❌ vehicles가 문자열입니다!');
+        showToast('데이터 형식 오류가 발생했습니다', 'error');
+        return;
+      }
 
       const response = await api.createBooking(bookingRequest);
       
@@ -2049,7 +2062,7 @@ const BookingPage = () => {
         throw new Error(response.message || '예약 생성에 실패했습니다.');
       }
     } catch (error) {
-      console.error('예약 오류:', error);
+      console.error('예약 실패 상세:', error);
       showToast(error.message || '예약 중 오류가 발생했습니다. 다시 시도해주세요.', 'error');
     } finally {
       setLoading(false);
