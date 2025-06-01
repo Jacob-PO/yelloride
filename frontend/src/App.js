@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity, Camera, ShoppingBag } from 'lucide-react';
+import TaxiUploadTab from './components/TaxiUploadTab';
 
 // 전역 상태 관리
 const AppContext = createContext();
@@ -132,6 +133,13 @@ class YellorideAPI {
 
   async getAllTaxiItems() {
     return this.requestWithRetry('/taxi/all');
+  }
+
+  async uploadTaxiItems(items) {
+    return this.requestWithRetry('/taxi/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ items })
+    });
   }
 
   // 입력 데이터 검증
@@ -756,6 +764,24 @@ const AdminPage = () => {
     }
   };
 
+  const handleBulkUpload = async (items) => {
+    setLoading(true);
+    try {
+      const response = await api.uploadTaxiItems(items);
+      if (response.success) {
+        showToast(`${response.count}건 업로드 완료`, 'success');
+        setPagination(prev => ({ ...prev, page: 1 }));
+        loadTaxiData();
+      } else {
+        throw new Error(response.message || '업로드 실패');
+      }
+    } catch (error) {
+      showToast(error.message || '업로드 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 1 })); // 필터 변경 시 첫 페이지로
@@ -821,7 +847,8 @@ const AdminPage = () => {
           <div className="flex space-x-8">
             {[
               { id: 'data', label: '데이터 조회', icon: Database },
-              { id: 'stats', label: '통계', icon: Activity }
+              { id: 'stats', label: '통계', icon: Activity },
+              { id: 'upload', label: '엑셀 업로드', icon: Upload }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1155,6 +1182,15 @@ const AdminPage = () => {
                   </div>
                 </div>
               )}
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'upload' && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-xl font-bold mb-4">엑셀 업로드</h3>
+              <TaxiUploadTab onUpload={handleBulkUpload} loading={loading} />
             </Card>
           </div>
         )}
