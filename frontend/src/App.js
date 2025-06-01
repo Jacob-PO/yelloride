@@ -1180,6 +1180,10 @@ const HomePage = () => {
       .split(' - ')[0];        // 영문 표기 제거
   };
 
+  // 가격 정보가 존재하는지 확인
+  const hasPrice = (route) =>
+    Number(route.reservation_fee) > 0 && Number(route.local_payment_fee) > 0;
+
   const currentRegionData = regionData[selectedRegion] || { airports: [], places: [] };
 
   const computeLocationLists = () => {
@@ -1210,7 +1214,7 @@ const HomePage = () => {
   useEffect(() => {
     const map = new Map();
     allRoutes.forEach(r => {
-      if (r.region === selectedRegion) {
+      if (r.region === selectedRegion && hasPrice(r)) {
         if (!map.has(r.departure_kor)) {
           map.set(r.departure_kor, {
             full_kor: r.departure_kor,
@@ -1228,7 +1232,11 @@ const HomePage = () => {
     if (bookingData.departure) {
       const map = new Map();
       allRoutes.forEach(r => {
-        if (r.region === selectedRegion && r.departure_kor === bookingData.departure) {
+        if (
+          r.region === selectedRegion &&
+          r.departure_kor === bookingData.departure &&
+          hasPrice(r)
+        ) {
           if (!map.has(r.arrival_kor)) {
             map.set(r.arrival_kor, {
               full_kor: r.arrival_kor,
@@ -1254,7 +1262,8 @@ const HomePage = () => {
       });
       
       if (response.success && Array.isArray(response.data)) {
-        setPopularRoutes(response.data);
+        const itemsWithPrice = response.data.filter(hasPrice);
+        setPopularRoutes(itemsWithPrice);
       } else {
         setPopularRoutes([]);
       }
@@ -1268,7 +1277,8 @@ const HomePage = () => {
       setLoadingAllRoutes(true);
       const response = await api.getAllTaxiItems();
       if (response.success && Array.isArray(response.data)) {
-        setAllRoutes(response.data);
+        const itemsWithPrice = response.data.filter(hasPrice);
+        setAllRoutes(itemsWithPrice);
       } else {
         setAllRoutes([]);
       }
@@ -1308,15 +1318,11 @@ const HomePage = () => {
 
     setLoading(true);
     try {
-      const response = await api.searchRoute(
-        departure, 
-        arrival, 
-        'kor'
-      );
-      
-      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-        setSearchResults(response.data);
-        showToast(`${response.data.length}개의 경로를 찾았습니다.`, 'success');
+      const response = await api.searchRoute(departure, arrival, 'kor');
+
+      if (response.success && response.data && hasPrice(response.data)) {
+        setSearchResults([response.data]);
+        showToast('경로를 찾았습니다.', 'success');
       } else {
         showToast('해당 경로를 찾을 수 없습니다.', 'warning');
         setSearchResults([]);
