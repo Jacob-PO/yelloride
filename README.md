@@ -21,11 +21,9 @@ YelloRide는 사용자가 편리하게 택시를 예약하고, 운전자가 효�
 ## 🚀 주요 기능
 
 ### 사용자 기능
-- 회원가입 및 로그인
 - 택시 예약 생성/조회/취소
 - 실시간 택시 위치 확인
 - 예약 이력 관리
-- 프로필 관리
 
 ### 운전자 기능
 - 예약 요청 확인 및 수락/거절
@@ -146,12 +144,6 @@ npm start
 ```
 
 ## 📡 API 엔드포인트
-
-### 인증 관련
-- `POST /api/auth/register` - 회원가입
-- `POST /api/auth/login` - 로그인
-- `GET /api/auth/profile` - 프로필 조회
-- `PUT /api/auth/profile` - 프로필 수정
 
 ### 택시 관련
 - `GET /api/taxis` - 택시 목록 조회

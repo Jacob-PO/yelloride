@@ -423,7 +423,7 @@ const ConnectionStatus = () => {
 
 // 관리자 페이지
 const AdminPage = () => {
-  const { setCurrentPage, api, showToast } = useContext(AppContext);
+  const { setCurrentPage, api, showToast, regionData } = useContext(AppContext);
   const [activeTab, setActiveTab] = useState('data');
   const [taxiData, setTaxiData] = useState([]);
   const [stats, setStats] = useState([]);
