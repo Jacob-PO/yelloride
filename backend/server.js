@@ -306,6 +306,22 @@ app.post('/api/bookings', async (req, res) => {
 
     const data = req.body;
 
+    if (typeof data.vehicles === 'string') {
+      try {
+        data.vehicles = JSON.parse(data.vehicles);
+      } catch (e) {
+        console.error('Invalid vehicles JSON string:', data.vehicles);
+      }
+    }
+
+    if (typeof data.service_info === 'string') {
+      try {
+        data.service_info = JSON.parse(data.service_info);
+      } catch (e) {
+        console.error('Invalid service_info JSON string:', data.service_info);
+      }
+    }
+
     if (!data.booking_number) {
       try {
         data.booking_number = 'YR' + crypto.randomUUID().slice(0, 6).toUpperCase();
@@ -376,6 +392,14 @@ app.patch('/api/bookings/:id', async (req, res) => {
         updateData.vehicles = JSON.parse(updateData.vehicles);
       } catch (e) {
         console.error('Invalid vehicles JSON string:', updateData.vehicles);
+      }
+    }
+
+    if (typeof updateData.service_info === 'string') {
+      try {
+        updateData.service_info = JSON.parse(updateData.service_info);
+      } catch (e) {
+        console.error('Invalid service_info JSON string:', updateData.service_info);
       }
     }
     const booking = await Booking.findByIdAndUpdate(req.params.id, updateData, { new: true });
