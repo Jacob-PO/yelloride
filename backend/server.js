@@ -248,6 +248,8 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
+  console.log('POST /api/bookings 요청됨');
+  console.log('요청 바디:', req.body);
   try {
     const data = req.body;
     // 기본 예약 번호 생성
