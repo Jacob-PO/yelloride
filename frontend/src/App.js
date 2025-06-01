@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import './App.css';
+import PageHeader from './components/PageHeader';
 import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity, Camera, ShoppingBag } from 'lucide-react';
 
 // 전역 상태 관리
@@ -792,29 +793,28 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => setCurrentPage('home')}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">관리자 대시보드</h1>
-                <p className="text-sm text-gray-500 mt-1">택시 데이터 관리 시스템</p>
-              </div>
+      <PageHeader
+        title="관리자 대시보드"
+        subtitle="택시 데이터 관리 시스템"
+        left={(
+          <button
+            className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100"
+            onClick={() => setCurrentPage('home')}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+        actions={(
+          <>
+            <div className="text-sm text-gray-500">
+              <span className="font-medium text-gray-700">Admin</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-500">
-                <span className="font-medium text-gray-700">Admin</span>
-              </div>
-              <Button variant="ghost" size="sm">
-                <LogOut className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+            <button className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100">
+              <LogOut className="w-5 h-5" />
+            </button>
+          </>
+        )}
+      />
 
       {/* 탭 네비게이션 */}
       <div className="bg-white border-b border-gray-100">
@@ -1628,34 +1628,31 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center">
-                <Car className="w-6 h-6 text-gray-900" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">YELLORIDE</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm">
-                <HelpCircle className="w-5 h-5" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setCurrentPage('admin')}
-                title="관리자 페이지"
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <UserCircle className="w-5 h-5" />
-              </Button>
-            </div>
+      <PageHeader
+        title="YELLORIDE"
+        left={(
+          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center">
+            <Car className="w-6 h-6 text-gray-900" />
           </div>
-        </div>
-      </header>
+        )}
+        actions={(
+          <>
+            <button className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100">
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            <button
+              className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100"
+              onClick={() => setCurrentPage('admin')}
+              title="관리자 페이지"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <button className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100">
+              <UserCircle className="w-5 h-5" />
+            </button>
+          </>
+        )}
+      />
 
       {/* 지역 선택 배너 */}
       <div className="bg-gradient-to-r from-yellow-400 to-yellow-500">
@@ -2365,19 +2362,18 @@ const BookingPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">{stepTitles[currentStep]}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{currentStep}/{totalSteps} 단계</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title={stepTitles[currentStep]}
+        subtitle={`${currentStep}/${totalSteps} 단계`}
+        left={(
+          <button
+            className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100"
+            onClick={() => setCurrentPage('home')}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+      />
 
       {/* 진행률 */}
       <div className="bg-white border-b border-gray-100">
@@ -2855,16 +2851,17 @@ const SearchPage = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="text-xl font-bold">예약 조회</h1>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="예약 조회"
+        left={(
+          <button
+            className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100"
+            onClick={() => setCurrentPage('home')}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+      />
 
       {/* 검색 탭 */}
       <div className="bg-white border-b border-gray-100">
@@ -3344,19 +3341,18 @@ const CharterPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentPage('home')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold">택시 대절</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{stepTitles[currentStep]}</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="택시 대절"
+        subtitle={stepTitles[currentStep]}
+        left={(
+          <button
+            className="inline-flex items-center justify-center p-2 rounded-2xl text-gray-700 hover:bg-gray-100"
+            onClick={() => setCurrentPage('home')}
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+      />
 
       {/* 진행률 */}
       <div className="bg-white border-b border-gray-100">
@@ -3815,11 +3811,7 @@ const ConfirmationPage = () => {
   
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-center">예약 완료</h1>
-        </div>
-      </header>
+      <PageHeader title="예약 완료" />
 
       <div className="max-w-lg mx-auto pb-8">
         {/* 성공 헤더 */}
