@@ -11,8 +11,12 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  if (req.method === 'POST' && req.path === '/api/bookings') {
-    console.log('예약 요청 바디:', JSON.stringify(req.body, null, 2));
+  if (req.path.includes('booking')) {
+    console.log('Query:', req.query);
+    console.log('Params:', req.params);
+    if (req.method === 'POST') {
+      console.log('Body:', JSON.stringify(req.body, null, 2));
+    }
   }
   next();
 });
@@ -299,67 +303,11 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // ----- 예약 API -----
 
-// 예약 생성
-app.post('/api/bookings', async (req, res) => {
-  try {
-    console.log('예약 요청 받음:', new Date().toISOString());
-
-    const data = req.body;
-
-    if (typeof data.vehicles === 'string') {
-      try {
-        data.vehicles = JSON.parse(data.vehicles);
-      } catch (e) {
-        console.error('Invalid vehicles JSON string:', data.vehicles);
-      }
-    }
-
-    if (typeof data.service_info === 'string') {
-      try {
-        data.service_info = JSON.parse(data.service_info);
-      } catch (e) {
-        console.error('Invalid service_info JSON string:', data.service_info);
-      }
-    }
-
-    if (!data.booking_number) {
-      try {
-        data.booking_number = 'YR' + crypto.randomUUID().slice(0, 6).toUpperCase();
-      } catch (e) {
-        data.booking_number = 'YR' + Date.now().toString(36).toUpperCase().slice(-6);
-      }
-    }
-
-    if (data.trip_details?.departure?.datetime) {
-      data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
-    }
-
-    const booking = new Booking(data);
-    await booking.save();
-
-    res.json({ success: true, data: booking });
-
-  } catch (err) {
-    console.error('❌ 예약 생성 에러:', err);
-    console.error('에러 스택:', err.stack);
-
-    res.status(500).json({
-      success: false,
-      message: err.message || 'Server error',
-      error: process.env.NODE_ENV === 'development' ? {
-        name: err.name,
-        message: err.message,
-        stack: err.stack
-      } : undefined
-    });
-  }
-});
-
 // 예약 조회 (검색)
 // GET /api/bookings/search?booking_number=XXXXXX
 app.get('/api/bookings/search', async (req, res) => {
-  console.log('=== 예약 검색 API 호출됨 ===');
-  console.log('쿼리 파라미터:', req.query);
+  console.log('=== 예약 검색 API 호출 ===');
+  console.log('검색 번호:', req.query.booking_number);
 
   try {
     const { booking_number } = req.query;
@@ -367,7 +315,7 @@ app.get('/api/bookings/search', async (req, res) => {
     if (!booking_number) {
       return res.status(400).json({
         success: false,
-        message: '예약번호를 입력해주세요.'
+        message: '예약번호를 입력해주세요'
       });
     }
 
@@ -375,15 +323,14 @@ app.get('/api/bookings/search', async (req, res) => {
       booking_number: booking_number.toUpperCase().trim()
     });
 
-    console.log('검색 결과:', booking ? '예약 찾음' : '예약 없음');
-
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: '예약을 찾을 수 없습니다.'
+        message: '예약을 찾을 수 없습니다'
       });
     }
 
+    // 전체 예약 정보 반환
     res.json({
       success: true,
       data: booking
@@ -394,7 +341,7 @@ app.get('/api/bookings/search', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -403,20 +350,6 @@ app.get('/api/bookings/search', async (req, res) => {
 app.get('/api/bookings/:id', async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found' });
-    }
-    res.json({ success: true, data: booking });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-// 예약 조회 (예약 번호)
-app.get('/api/bookings/number/:bookingNumber', async (req, res) => {
-  try {
-    const booking = await Booking.findOne({ booking_number: req.params.bookingNumber });
     if (!booking) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
     }
@@ -472,6 +405,87 @@ app.post('/api/bookings/:id/cancel', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 조회 (예약 번호)
+app.get('/api/bookings/number/:bookingNumber', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ booking_number: req.params.bookingNumber });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 목록 조회
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const bookings = await Booking.find();
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 예약 생성
+app.post('/api/bookings', async (req, res) => {
+  try {
+    console.log('예약 요청 받음:', new Date().toISOString());
+
+    const data = req.body;
+
+    if (typeof data.vehicles === 'string') {
+      try {
+        data.vehicles = JSON.parse(data.vehicles);
+      } catch (e) {
+        console.error('Invalid vehicles JSON string:', data.vehicles);
+      }
+    }
+
+    if (typeof data.service_info === 'string') {
+      try {
+        data.service_info = JSON.parse(data.service_info);
+      } catch (e) {
+        console.error('Invalid service_info JSON string:', data.service_info);
+      }
+    }
+
+    if (!data.booking_number) {
+      try {
+        data.booking_number = 'YR' + crypto.randomUUID().slice(0, 6).toUpperCase();
+      } catch (e) {
+        data.booking_number = 'YR' + Date.now().toString(36).toUpperCase().slice(-6);
+      }
+    }
+
+    if (data.trip_details?.departure?.datetime) {
+      data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
+    }
+
+    const booking = new Booking(data);
+    await booking.save();
+
+    res.json({ success: true, data: booking });
+
+  } catch (err) {
+    console.error('❌ 예약 생성 에러:', err);
+    console.error('에러 스택:', err.stack);
+
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Server error',
+      error: process.env.NODE_ENV === 'development' ? {
+        name: err.name,
+        message: err.message,
+        stack: err.stack
+      } : undefined
+    });
   }
 });
 
