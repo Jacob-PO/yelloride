@@ -78,10 +78,18 @@ app.get('/api/taxi/all', async (req, res) => {
 // 경로 검색
 app.get('/api/taxi/route', async (req, res) => {
   try {
-    const { departure, arrival } = req.query;
+    const { departure, arrival, lang = 'kor' } = req.query;
     const filter = {};
-    if (departure) filter.departure_kor = departure;
-    if (arrival) filter.arrival_kor = arrival;
+
+    if (departure) {
+      const depKey = lang === 'eng' ? 'departure_eng' : 'departure_kor';
+      filter[depKey] = departure;
+    }
+    if (arrival) {
+      const arrKey = lang === 'eng' ? 'arrival_eng' : 'arrival_kor';
+      filter[arrKey] = arrival;
+    }
+
     const item = await TaxiItem.findOne(filter);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Route not found' });
