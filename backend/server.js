@@ -14,6 +14,15 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error', err));
 
+// MongoDB connection event logging
+mongoose.connection.on('error', err => {
+  console.error('MongoDB 연결 에러:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.error('MongoDB 연결 끊김');
+});
+
 const taxiItemSchema = new mongoose.Schema({
   region: String,
   departure_kor: String,
@@ -81,6 +90,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });
 });
 
+// MongoDB connection status check
+app.get('/api/db-status', (req, res) => {
+  res.json({
+    mongoStatus: mongoose.connection.readyState,
+    mongoStatusText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState]
+  });
+});
+
 // 목록 조회 with pagination
 app.get('/api/taxi', async (req, res) => {
   try {
@@ -111,6 +128,35 @@ app.get('/api/taxi', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 간단한 예약 생성 테스트용 엔드포인트
+app.post('/api/bookings/test', async (req, res) => {
+  try {
+    const testBooking = new Booking({
+      booking_number: 'TEST' + Date.now(),
+      customer_info: {
+        name: 'Test',
+        phone: '010-1234-5678'
+      },
+      vehicles: [
+        {
+          type: 'standard',
+          passengers: 1,
+          luggage: 0
+        }
+      ]
+    });
+
+    await testBooking.save();
+    res.json({ success: true, message: '테스트 예약 생성 성공' });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      validation: err.errors
+    });
   }
 });
 
@@ -248,10 +294,9 @@ app.get('/api/taxi/stats', async (req, res) => {
 
 // 예약 생성
 app.post('/api/bookings', async (req, res) => {
-  console.log('=== 예약 요청 시작 ===');
-  console.log('요청 시간:', new Date().toISOString());
-  console.log('요청 헤더:', req.headers);
-  console.log('요청 바디:', JSON.stringify(req.body, null, 2));
+  console.log('=== 예약 요청 받음 ===');
+  console.log('시간:', new Date().toISOString());
+  console.log('Body:', JSON.stringify(req.body, null, 2));
 
   try {
     const data = req.body;
@@ -300,8 +345,21 @@ app.post('/api/bookings', async (req, res) => {
       data.booking_number = 'YR' + uniquePart;
     }
 
+    // datetime 변환 로깅
+    console.log('datetime 변환 전:', data.trip_details?.departure?.datetime);
+    if (data.trip_details?.departure?.datetime) {
+      data.trip_details.departure.datetime = new Date(data.trip_details.departure.datetime);
+      console.log('datetime 변환 후:', data.trip_details.departure.datetime);
+    }
+
+    console.log('Booking 생성 전 최종 데이터:', data);
+
     const booking = new Booking(data);
+    console.log('Booking 객체 생성 성공');
+
     await booking.save();
+    console.log('MongoDB 저장 성공');
+
     res.json({ success: true, data: booking });
 
   } catch (err) {
@@ -342,8 +400,9 @@ app.post('/api/bookings', async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: err.message,
+      errorName: err.name,
+      errorDetails: process.env.NODE_ENV === 'development' ? err : undefined
     });
   }
 });

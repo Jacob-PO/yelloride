@@ -36,31 +36,19 @@ class YellorideAPI {
         fetch(url, config),
         timeoutPromise
       ]);
-      
-      // 네트워크 오류 체크
+
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
-        // 상태 코드별 에러 처리
-        switch (response.status) {
-          case 400:
-            throw new Error(errorData.message || '잘못된 요청입니다.');
-          case 401:
-            throw new Error('인증이 필요합니다.');
-          case 403:
-            throw new Error('접근이 거부되었습니다.');
-          case 404:
-            throw new Error('요청한 데이터를 찾을 수 없습니다.');
-          case 429:
-            throw new Error('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
-          case 500:
-            throw new Error('서버 내부 오류가 발생했습니다.');
-          default:
-            throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-        }
+        console.error('서버 응답 에러:', data);
+
+        const errorMessage = data.errorDetails
+          ? `서버 에러: ${data.message} (${data.errorName})`
+          : data.message || '서버 내부 오류가 발생했습니다.';
+
+        throw new Error(errorMessage);
       }
-      
-      const data = await response.json();
+
       return data;
     } catch (error) {
       // 네트워크 연결 오류
