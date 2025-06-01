@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity, Camera, ShoppingBag } from 'lucide-react';
 
 // 전역 상태 관리
 const AppContext = createContext();
@@ -172,7 +172,13 @@ class YellorideAPI {
   }
 
   async searchBooking(bookingNumber) {
-    return this.requestWithRetry(`/bookings/search?booking_number=${bookingNumber}`);
+    if (!bookingNumber || !bookingNumber.trim()) {
+      throw new Error('예약번호를 입력해주세요');
+    }
+
+    const normalizedNumber = bookingNumber.trim().toUpperCase();
+
+    return this.requestWithRetry(`/bookings/search?booking_number=${encodeURIComponent(normalizedNumber)}`);
   }
 
   async updateBooking(bookingId, updateData) {
@@ -2147,6 +2153,18 @@ const BookingPage = () => {
   const [errors, setErrors] = useState({});
   const totalSteps = 4;
 
+  const vehicleColorClasses = {
+    standard: 'bg-gray-100',
+    xl: 'bg-blue-100',
+    premium: 'bg-purple-100'
+  };
+
+  const vehicleIconClasses = {
+    standard: 'text-gray-600',
+    xl: 'text-blue-600',
+    premium: 'text-purple-600'
+  };
+
   useEffect(() => {
     // 오늘 날짜 설정
     const today = new Date().toISOString().split('T')[0];
@@ -2619,8 +2637,8 @@ const BookingPage = () => {
                       onClick={() => updateBookingData('vehicle', vehicle.type)}
                     >
                       <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 bg-${vehicle.color}-100 rounded-xl flex items-center justify-center flex-shrink-0`}>
-                          <vehicle.icon className={`w-6 h-6 text-${vehicle.color}-600`} />
+                        <div className={`w-12 h-12 ${vehicleColorClasses[vehicle.type]} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                          <vehicle.icon className={`w-6 h-6 ${vehicleIconClasses[vehicle.type]}`} />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
@@ -2827,7 +2845,7 @@ const BookingPage = () => {
 
 // 검색 페이지 컴포넌트 (토스 스타일)
 const SearchPage = () => {
-  const { setCurrentPage, api } = useContext(AppContext);
+  const { setCurrentPage, api, setBookingData } = useContext(AppContext);
   const [searchType, setSearchType] = useState('number');
   const [searchValue, setSearchValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -3184,6 +3202,30 @@ const CharterPage = () => {
   const [loading, setLoading] = useState(false);
   const [locationOptions, setLocationOptions] = useState([]);
   const totalSteps = 5;
+
+  const getColorClasses = (color) => {
+    const colorMap = {
+      blue: 'bg-blue-100 text-blue-600',
+      pink: 'bg-pink-100 text-pink-600',
+      gray: 'bg-gray-100 text-gray-600',
+      green: 'bg-green-100 text-green-600',
+      purple: 'bg-purple-100 text-purple-600',
+      yellow: 'bg-yellow-100 text-yellow-600'
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-600';
+  };
+
+  const vehicleColorClasses = {
+    standard: 'bg-gray-100',
+    xl: 'bg-blue-100',
+    premium: 'bg-purple-100'
+  };
+
+  const vehicleIconClasses = {
+    standard: 'text-gray-600',
+    xl: 'text-blue-600',
+    premium: 'text-purple-600'
+  };
   
   const [charterData, setCharterData] = useState({
     purpose: null,
@@ -3405,8 +3447,8 @@ const CharterPage = () => {
                     }`}
                     onClick={() => updateCharterData('purpose', purpose.id)}
                   >
-                    <div className={`w-16 h-16 bg-${purpose.color}-100 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
-                      <purpose.icon className={`w-8 h-8 text-${purpose.color}-600`} />
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform ${getColorClasses(purpose.color).split(' ')[0]}`}>
+                      <purpose.icon className={`w-8 h-8 ${getColorClasses(purpose.color).split(' ')[1]}`} />
                     </div>
                     <h4 className="font-bold text-gray-900 mb-1">{purpose.title}</h4>
                     <p className="text-sm text-gray-600">{purpose.desc}</p>
@@ -3586,8 +3628,8 @@ const CharterPage = () => {
                       onClick={() => updateCharterData('vehicle', vehicle.type)}
                     >
                       <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 bg-${vehicle.color}-100 rounded-xl flex items-center justify-center flex-shrink-0`}>
-                          <vehicle.icon className={`w-6 h-6 text-${vehicle.color}-600`} />
+                        <div className={`w-12 h-12 ${vehicleColorClasses[vehicle.type]} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                          <vehicle.icon className={`w-6 h-6 ${vehicleIconClasses[vehicle.type]}`} />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
@@ -4006,8 +4048,5 @@ const ConfirmationPage = () => {
     </div>
   );
 };
-
-// CSS 보완을 위한 Tailwind 클래스들
-const ShoppingBag = Luggage; // Luggage 아이콘을 ShoppingBag으로 사용
 
 export default YellorideApp;
