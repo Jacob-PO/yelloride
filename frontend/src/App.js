@@ -403,6 +403,123 @@ const EmptyState = ({ title, message, action, icon = '📭' }) => {
   );
 };
 
+// 예약 검색 모달
+const BookingSearchModal = ({ isOpen, onClose }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { api } = useContext(AppContext);
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      setError('예약번호를 입력해주세요.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.searchBooking(searchTerm);
+
+      if (response.success && response.data) {
+        setBooking(response.data);
+        setError('');
+      } else {
+        setBooking(null);
+        setError('예약을 찾을 수 없습니다.');
+      }
+    } catch (err) {
+      console.error('검색 오류:', err);
+      setBooking(null);
+      setError('예약 조회 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderBookingDetails = () => {
+    if (!booking) return null;
+
+    return (
+      <div className="booking-details">
+        <div className="booking-header">
+          <h3>{booking.booking_number}</h3>
+          <span className={`status ${booking.status}`}>
+            {booking.status === 'pending' ? '예약 대기' : booking.status}
+          </span>
+        </div>
+
+        <div className="booking-info">
+          <div className="info-row">
+            <i className="icon">📍</i>
+            <div>
+              <p className="label">출발</p>
+              <p className="value">{booking.trip_details?.departure?.location || '-'}</p>
+            </div>
+          </div>
+
+          <div className="info-row">
+            <i className="icon">🎯</i>
+            <div>
+              <p className="label">도착</p>
+              <p className="value">{booking.trip_details?.arrival?.location || '-'}</p>
+            </div>
+          </div>
+
+          <div className="info-row">
+            <i className="icon">📅</i>
+            <div>
+              <p className="label">날짜/시간</p>
+              <p className="value">
+                {booking.trip_details?.departure?.datetime
+                  ? new Date(booking.trip_details.departure.datetime).toLocaleString('ko-KR')
+                  : '-'}
+              </p>
+            </div>
+          </div>
+
+          <div className="info-row">
+            <i className="icon">💰</i>
+            <div>
+              <p className="label">예약금</p>
+              <p className="value">${booking.pricing?.total_amount || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`modal ${isOpen ? 'open' : ''}`}>
+      <div className="modal-content">
+        <button className="close-btn" onClick={onClose}>✕</button>
+
+        <h2>예약 조회</h2>
+
+        <div className="search-form">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="예약번호를 입력하세요"
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <button onClick={handleSearch} disabled={loading}>
+            {loading ? '조회 중...' : '조회하기'}
+          </button>
+        </div>
+
+        {error && <div className="error-message">{error}</div>}
+
+        {booking && renderBookingDetails()}
+      </div>
+    </div>
+  );
+};
+
 // 연결 상태 표시 컴포넌트
 const ConnectionStatus = () => {
   const isOnline = useOnlineStatus();
@@ -1182,6 +1299,7 @@ const HomePage = () => {
   const { setCurrentPage, selectedRegion, setSelectedRegion, regionData, loadingRegions, bookingData, setBookingData, api, showToast } = useContext(AppContext);
   const [showRegionModal, setShowRegionModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [locationSelectType, setLocationSelectType] = useState('departure');
   const [uniqueDepartures, setUniqueDepartures] = useState([]);
   const [filteredArrivals, setFilteredArrivals] = useState([]);
@@ -1590,7 +1708,7 @@ const HomePage = () => {
               <div className="text-sm text-gray-600">시간제 이용</div>
             </Card>
             
-            <Card className="p-4 text-center" onClick={() => setCurrentPage('search')}>
+            <Card className="p-4 text-center" onClick={() => setShowSearchModal(true)}>
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600">
                 📋
               </div>
@@ -1639,7 +1757,7 @@ const HomePage = () => {
             <div className="text-blue-500 mb-1">🏠</div>
             <div className="text-xs font-medium text-blue-500">홈</div>
           </button>
-          <button className="flex-1 py-3 text-center" onClick={() => setCurrentPage('search')}>
+          <button className="flex-1 py-3 text-center" onClick={() => setShowSearchModal(true)}>
             <div className="text-gray-400 mb-1">📋</div>
             <div className="text-xs text-gray-400">예약내역</div>
           </button>
@@ -1653,6 +1771,14 @@ const HomePage = () => {
           </button>
         </div>
       </nav>
+
+      {/* 예약 조회 모달 */}
+      {showSearchModal && (
+        <BookingSearchModal
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+        />
+      )}
 
       {/* 지역 선택 모달 */}
       {showRegionModal && (

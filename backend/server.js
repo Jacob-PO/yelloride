@@ -355,6 +355,50 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
+// 예약 조회 (검색)
+// GET /api/bookings/search?booking_number=XXXXXX
+app.get('/api/bookings/search', async (req, res) => {
+  console.log('=== 예약 검색 API 호출됨 ===');
+  console.log('쿼리 파라미터:', req.query);
+
+  try {
+    const { booking_number } = req.query;
+
+    if (!booking_number) {
+      return res.status(400).json({
+        success: false,
+        message: '예약번호를 입력해주세요.'
+      });
+    }
+
+    const booking = await Booking.findOne({
+      booking_number: booking_number.toUpperCase().trim()
+    });
+
+    console.log('검색 결과:', booking ? '예약 찾음' : '예약 없음');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: '예약을 찾을 수 없습니다.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: booking
+    });
+
+  } catch (error) {
+    console.error('예약 검색 에러:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 // 예약 조회 (ID)
 app.get('/api/bookings/:id', async (req, res) => {
   try {
@@ -366,27 +410,6 @@ app.get('/api/bookings/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-// 예약 조회 (검색)
-// GET /api/bookings/search?booking_number=XXXXXX
-app.get('/api/bookings/search', async (req, res) => {
-  try {
-    const { booking_number } = req.query;
-    console.log('예약 조회 요청:', booking_number);
-
-    const booking = await Booking.findOne({ booking_number: booking_number?.toUpperCase() });
-
-    if (!booking) {
-      return res.status(404).json({ success: false, message: '예약을 찾을 수 없습니다.' });
-    }
-
-    console.log('찾은 예약:', booking);
-    res.json({ success: true, data: booking });
-  } catch (error) {
-    console.error('예약 조회 에러:', error);
-    res.status(500).json({ success: false, message: error.message });
   }
 });
 
