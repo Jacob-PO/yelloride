@@ -1,5 +1,4 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
-import './App.css';
 import { ArrowLeft, Plus, Minus, X, ChevronRight, MapPin, Clock, Calendar, Search, Info, Plane, Building2, Car, CheckCircle, Phone, HeadphonesIcon, User, Menu, Globe, FileText, Users, Luggage, CreditCard, Shield, Star, AlertCircle, Check, ChevronDown, Navigation, DollarSign, UserCircle, Settings, LogOut, Home, Briefcase, HelpCircle, ChevronUp, Filter, RefreshCw, Trash2, Download, Upload, Database, Activity, Camera, ShoppingBag } from 'lucide-react';
 
 // 전역 상태 관리
@@ -242,7 +241,7 @@ const Toast = ({ message, type, onClose }) => {
   };
 
   return (
-    <div className={`fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-xl border ${typeStyles[type]} max-w-sm animate-slide-in`}>
+    <div className={`fixed top-4 right-4 z-50 p-4 rounded-2xl shadow-xl border ${typeStyles[type]} max-w-sm transition-all duration-300 transform translate-x-0`}>
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">{icons[type]}</div>
         <span className="text-sm font-medium flex-1">{message}</span>
@@ -1903,7 +1902,7 @@ const HomePage = () => {
       </div>
 
       {/* 하단 네비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 pb-safe">
         <div className="max-w-lg mx-auto flex">
           <button className="flex-1 py-4 text-center group">
             <Home className="w-6 h-6 mx-auto mb-1 text-yellow-500" />
@@ -1939,7 +1938,7 @@ const HomePage = () => {
           onClick={() => setShowRegionModal(false)}
         >
           <div 
-            className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 animate-slide-up safe-area-pb"
+            className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 animate-slide-up pb-safe"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6"></div>
@@ -2758,7 +2757,7 @@ const BookingPage = () => {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 safe-area-pb">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe">
         <div className="max-w-lg mx-auto flex gap-3">
           {currentStep > 1 && (
             <Button
@@ -3019,7 +3018,7 @@ const SearchPage = () => {
       {/* 상세 모달 */}
       {showDetail && selectedBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50 animate-fade-in">
-          <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto animate-slide-up safe-area-pb">
+          <div className="bg-white w-full max-w-lg mx-auto rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto animate-slide-up pb-safe">
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6"></div>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold">예약 상세 정보</h3>
@@ -3736,7 +3735,7 @@ const CharterPage = () => {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 safe-area-pb">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-safe">
         <div className="max-w-lg mx-auto flex gap-3">
           {currentStep > 1 && (
             <Button
